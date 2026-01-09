@@ -49,6 +49,17 @@ function buildLayout() {
               <th>Origen</th>
               <th>Destino</th>
               <th>Estado</th>
+              <th>Ejecutivo</th>
+              <th>Trip</th>
+              <th>Caja</th>
+              <th>Segmento</th>
+              <th>TR-MX</th>
+              <th>TR-USA</th>
+              <th>Cita carga</th>
+              <th>Llegada carga</th>
+              <th>Cita entrega</th>
+              <th>Llegada entrega</th>
+              <th>Comentarios</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -169,7 +180,18 @@ function normalizeObjectRow(row) {
     cliente: getRowValue(row, ['cliente', 'client', 'customer']),
     origen: getRowValue(row, ['origen', 'origin', 'source']),
     destino: getRowValue(row, ['destino', 'destination', 'dest']),
-    estado: getRowValue(row, ['estado', 'status'])
+    estado: getRowValue(row, ['estado', 'status']),
+    ejecutivo: getRowValue(row, ['ejecutivo']),
+    trip: getRowValue(row, ['trip']),
+    caja: getRowValue(row, ['caja']),
+    segmento: getRowValue(row, ['segmento']),
+    'tr-mx': getRowValue(row, ['tr-mx']),
+    'tr-usa': getRowValue(row, ['tr-usa']),
+    'cita carga': getRowValue(row, ['cita carga']),
+    'llegada carga': getRowValue(row, ['llegada carga']),
+    'cita entrega': getRowValue(row, ['cita entrega']),
+    'llegada entrega': getRowValue(row, ['llegada entrega']),
+    comentarios: getRowValue(row, ['comentarios'])
   };
 }
 
@@ -197,6 +219,17 @@ function renderTable(data) {
           <td>${row.origen || '-'}</td>
           <td>${row.destino || '-'}</td>
           <td>${row.estado || '-'}</td>
+          <td>${row.ejecutivo || '-'}</td>
+          <td>${row.trip || '-'}</td>
+          <td>${row.caja || '-'}</td>
+          <td>${row.segmento || '-'}</td>
+          <td>${row['tr-mx'] || '-'}</td>
+          <td>${row['tr-usa'] || '-'}</td>
+          <td>${row['cita carga'] || '-'}</td>
+          <td>${row['llegada carga'] || '-'}</td>
+          <td>${row['cita entrega'] || '-'}</td>
+          <td>${row['llegada entrega'] || '-'}</td>
+          <td>${row.comentarios || '-'}</td>
         </tr>
       `;
     })
