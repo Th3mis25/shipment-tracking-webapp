@@ -100,6 +100,9 @@ async function fetchData() {
 
     // Se espera un arreglo de objetos con llaves coherentes con la tabla.
     const payload = await response.json();
+    if (payload?.success === false) {
+      throw new Error(payload.error || 'El backend respondió con un error.');
+    }
     const data = normalizePayload(payload);
     state.error = null;
     state.data = data;
