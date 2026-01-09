@@ -175,23 +175,24 @@ function normalizeArrayRows(rows) {
 }
 
 function normalizeObjectRow(row) {
+  const normalizedRow = normalizeRowKeys(row);
   return {
-    referencia: getRowValue(row, ['referencia', 'reference', 'ref']),
-    cliente: getRowValue(row, ['cliente', 'client', 'customer']),
-    origen: getRowValue(row, ['origen', 'origin', 'source']),
-    destino: getRowValue(row, ['destino', 'destination', 'dest']),
-    estado: getRowValue(row, ['estado', 'estatus', 'status']),
-    ejecutivo: getRowValue(row, ['ejecutivo']),
-    trip: getRowValue(row, ['trip']),
-    caja: getRowValue(row, ['caja']),
-    segmento: getRowValue(row, ['segmento']),
-    'tr-mx': getRowValue(row, ['tr-mx']),
-    'tr-usa': getRowValue(row, ['tr-usa']),
-    'cita carga': getRowValue(row, ['cita carga']),
-    'llegada carga': getRowValue(row, ['llegada carga']),
-    'cita entrega': getRowValue(row, ['cita entrega']),
-    'llegada entrega': getRowValue(row, ['llegada entrega']),
-    comentarios: getRowValue(row, ['comentarios'])
+    referencia: getRowValue(normalizedRow, ['referencia', 'reference', 'ref']),
+    cliente: getRowValue(normalizedRow, ['cliente', 'client', 'customer']),
+    origen: getRowValue(normalizedRow, ['origen', 'origin', 'source']),
+    destino: getRowValue(normalizedRow, ['destino', 'destination', 'dest']),
+    estado: getRowValue(normalizedRow, ['estado', 'estatus', 'status']),
+    ejecutivo: getRowValue(normalizedRow, ['ejecutivo']),
+    trip: getRowValue(normalizedRow, ['trip']),
+    caja: getRowValue(normalizedRow, ['caja']),
+    segmento: getRowValue(normalizedRow, ['segmento']),
+    'tr-mx': getRowValue(normalizedRow, ['tr-mx']),
+    'tr-usa': getRowValue(normalizedRow, ['tr-usa']),
+    'cita carga': getRowValue(normalizedRow, ['cita carga']),
+    'llegada carga': getRowValue(normalizedRow, ['llegada carga']),
+    'cita entrega': getRowValue(normalizedRow, ['cita entrega']),
+    'llegada entrega': getRowValue(normalizedRow, ['llegada entrega']),
+    comentarios: getRowValue(normalizedRow, ['comentarios'])
   };
 }
 
@@ -202,6 +203,23 @@ function getRowValue(row, keys) {
     }
   }
   return '';
+}
+
+function normalizeRowKeys(row) {
+  if (!row || typeof row !== 'object') {
+    return {};
+  }
+
+  return Object.keys(row).reduce((accumulator, key) => {
+    const normalizedKey = key ? key.toString().trim().toLowerCase() : '';
+    if (!normalizedKey) {
+      return accumulator;
+    }
+    if (!(normalizedKey in accumulator)) {
+      accumulator[normalizedKey] = row[key];
+    }
+    return accumulator;
+  }, {});
 }
 
 // Renderiza filas en la tabla con la data filtrada.
