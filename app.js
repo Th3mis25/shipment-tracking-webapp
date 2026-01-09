@@ -180,7 +180,7 @@ function normalizeObjectRow(row) {
     cliente: getRowValue(row, ['cliente', 'client', 'customer']),
     origen: getRowValue(row, ['origen', 'origin', 'source']),
     destino: getRowValue(row, ['destino', 'destination', 'dest']),
-    estado: getRowValue(row, ['estado', 'status']),
+    estado: getRowValue(row, ['estado', 'estatus', 'status']),
     ejecutivo: getRowValue(row, ['ejecutivo']),
     trip: getRowValue(row, ['trip']),
     caja: getRowValue(row, ['caja']),
