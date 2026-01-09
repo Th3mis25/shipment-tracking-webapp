@@ -8,7 +8,8 @@
 const state = {
   data: [],
   filtered: [],
-  query: ''
+  query: '',
+  error: null
 };
 
 // Referencias a elementos principales del DOM.
@@ -18,6 +19,8 @@ const dom = {
   tableBody: null,
   emptyState: null
 };
+
+const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
 
 // Punto de entrada de la app.
 document.addEventListener('DOMContentLoaded', () => {
@@ -51,7 +54,7 @@ function buildLayout() {
           <tbody></tbody>
         </table>
       </div>
-      <p class="empty-state" hidden>No hay resultados para mostrar.</p>
+      <p class="empty-state" hidden>${DEFAULT_EMPTY_MESSAGE}</p>
     </section>
   `;
 
@@ -72,7 +75,8 @@ function bindEvents() {
 async function fetchData() {
   // Validación mínima de la URL para evitar errores silenciosos.
   if (!CONFIG || !CONFIG.API_URL || CONFIG.API_URL.includes('PEGAR_AQUI')) {
-    console.warn('Configura CONFIG.API_URL en config.js para conectar el backend.');
+    state.error = 'Configura CONFIG.API_URL en config.js para conectar el backend.';
+    console.warn(state.error);
     renderTable([]);
     return;
   }
@@ -85,10 +89,16 @@ async function fetchData() {
 
     // Se espera un arreglo de objetos con llaves coherentes con la tabla.
     const data = await response.json();
+    state.error = null;
     state.data = Array.isArray(data) ? data : [];
     state.filtered = [...state.data];
     renderTable(state.filtered);
   } catch (error) {
+    state.error =
+      'No se pudieron cargar los registros. Revisa permisos y acceso del backend.';
+    if (error instanceof Error && error.message) {
+      state.error = `${state.error} (${error.message}).`;
+    }
     console.error('Error al obtener datos:', error);
     renderTable([]);
   }
@@ -114,6 +124,7 @@ function renderTable(data) {
     })
     .join('');
 
+  dom.emptyState.textContent = state.error || DEFAULT_EMPTY_MESSAGE;
   dom.emptyState.hidden = data.length > 0;
 }
 
