@@ -88,9 +88,10 @@ async function fetchData() {
     }
 
     // Se espera un arreglo de objetos con llaves coherentes con la tabla.
-    const data = await response.json();
+    const payload = await response.json();
+    const data = normalizePayload(payload);
     state.error = null;
-    state.data = Array.isArray(data) ? data : [];
+    state.data = data;
     state.filtered = [...state.data];
     renderTable(state.filtered);
   } catch (error) {
@@ -102,6 +103,83 @@ async function fetchData() {
     console.error('Error al obtener datos:', error);
     renderTable([]);
   }
+}
+
+function normalizePayload(payload) {
+  if (Array.isArray(payload)) {
+    return normalizeRows(payload);
+  }
+
+  if (payload && typeof payload === 'object') {
+    const candidates = [payload.data, payload.records, payload.rows, payload.items];
+    const list = candidates.find((candidate) => Array.isArray(candidate));
+    if (list) {
+      return normalizeRows(list);
+    }
+
+    if (Array.isArray(payload.values)) {
+      return normalizeArrayRows(payload.values);
+    }
+  }
+
+  return [];
+}
+
+function normalizeRows(rows) {
+  if (!rows.length) {
+    return [];
+  }
+
+  if (Array.isArray(rows[0])) {
+    return normalizeArrayRows(rows);
+  }
+
+  if (typeof rows[0] === 'object' && rows[0] !== null) {
+    return rows.map((row) => normalizeObjectRow(row));
+  }
+
+  return [];
+}
+
+function normalizeArrayRows(rows) {
+  const [headerRow, ...dataRows] = rows;
+  if (!Array.isArray(headerRow)) {
+    return [];
+  }
+
+  const headers = headerRow.map((header) =>
+    header ? header.toString().trim().toLowerCase() : ''
+  );
+
+  return dataRows.map((row) => {
+    const record = {};
+    headers.forEach((header, index) => {
+      if (!header) {
+        return;
+      }
+      record[header] = row?.[index] ?? '';
+    });
+    return normalizeObjectRow(record);
+  });
+}
+
+function normalizeObjectRow(row) {
+  return {
+    referencia: getRowValue(row, ['referencia', 'reference', 'ref']),
+    cliente: getRowValue(row, ['cliente', 'client', 'customer']),
+    origen: getRowValue(row, ['origen', 'origin', 'source']),
+    destino: getRowValue(row, ['destino', 'destination', 'dest']),
+    estado: getRowValue(row, ['estado', 'status'])
+  };
+}
+
+function getRowValue(row, keys) {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(row, key)) {
+      return row[key];
+    }
+  }
+  return '';
 }
 
 // Renderiza filas en la tabla con la data filtrada.
