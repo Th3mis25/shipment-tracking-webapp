@@ -191,12 +191,45 @@ function normalizeObjectRow(row) {
     segmento: getRowValue(normalizedRow, ['segmento']),
     'tr-mx': getRowValue(normalizedRow, ['tr-mx']),
     'tr-usa': getRowValue(normalizedRow, ['tr-usa']),
-    'cita carga': getRowValue(normalizedRow, ['cita carga']),
-    'llegada carga': getRowValue(normalizedRow, ['llegada carga']),
-    'cita entrega': getRowValue(normalizedRow, ['cita entrega']),
-    'llegada entrega': getRowValue(normalizedRow, ['llegada entrega']),
+    'cita carga': formatDateTime(getRowValue(normalizedRow, ['cita carga'])),
+    'llegada carga': formatDateTime(getRowValue(normalizedRow, ['llegada carga'])),
+    'cita entrega': formatDateTime(getRowValue(normalizedRow, ['cita entrega'])),
+    'llegada entrega': formatDateTime(getRowValue(normalizedRow, ['llegada entrega'])),
     comentarios: getRowValue(normalizedRow, ['comentarios'])
   };
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return '';
+  }
+
+  const rawValue = value.toString().trim();
+  if (!rawValue) {
+    return '';
+  }
+
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) {
+    return rawValue;
+  }
+
+  const formatter = new Intl.DateTimeFormat('es-MX', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC'
+  });
+
+  const parts = formatter.formatToParts(date).reduce((accumulator, part) => {
+    accumulator[part.type] = part.value;
+    return accumulator;
+  }, {});
+
+  return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`;
 }
 
 function getRowValue(row, keys) {
