@@ -194,7 +194,7 @@ function buildLayout() {
   dom.tripEditButton.hidden = true;
 
   updateMenuActiveState();
-  setMenuOpen(true);
+  setMenuOpen(false);
 }
 
 // Enlaza eventos de interacción básicos.
@@ -933,6 +933,7 @@ function setView(view) {
 
   state.view = view;
   updateMenuActiveState();
+  setMenuOpen(false);
   applyFilters(state.query);
 }
 
