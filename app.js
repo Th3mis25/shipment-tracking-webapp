@@ -47,22 +47,12 @@ function buildLayout() {
         <table class="tracking-table">
           <thead>
             <tr>
-              <th>Referencia</th>
               <th>Cliente</th>
-              <th>Origen</th>
-              <th>Destino</th>
               <th>Estado</th>
-              <th>Ejecutivo</th>
               <th>Trip</th>
               <th>Caja</th>
-              <th>Segmento</th>
               <th>TR-MX</th>
               <th>TR-USA</th>
-              <th>Cita carga</th>
-              <th>Llegada carga</th>
-              <th>Cita entrega</th>
-              <th>Llegada entrega</th>
-              <th>Comentarios</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -310,22 +300,12 @@ function renderTable(data) {
     .map((row, index) => {
       return `
         <tr>
-          <td>${row.referencia || '-'}</td>
           <td>${row.cliente || '-'}</td>
-          <td>${row.origen || '-'}</td>
-          <td>${row.destino || '-'}</td>
           <td>${row.estado || '-'}</td>
-          <td>${row.ejecutivo || '-'}</td>
           <td>${renderTripCell(row.trip, index)}</td>
           <td>${row.caja || '-'}</td>
-          <td>${row.segmento || '-'}</td>
           <td>${row['tr-mx'] || '-'}</td>
           <td>${row['tr-usa'] || '-'}</td>
-          <td>${row['cita carga'] || '-'}</td>
-          <td>${row['llegada carga'] || '-'}</td>
-          <td>${row['cita entrega'] || '-'}</td>
-          <td>${row['llegada entrega'] || '-'}</td>
-          <td>${row.comentarios || '-'}</td>
         </tr>
       `;
     })
