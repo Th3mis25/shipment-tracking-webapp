@@ -21,7 +21,6 @@ const MEXICO_TZ = 'America/Mexico_City';
 const ADD_RECORD_FIELDS = [
   { key: 'referencia', label: 'Referencia' },
   { key: 'cliente', label: 'Cliente' },
-  { key: 'origen', label: 'Origen' },
   { key: 'destino', label: 'Destino' },
   { key: 'estado', label: 'Estado' },
   { key: 'ejecutivo', label: 'Ejecutivo' },
@@ -30,6 +29,7 @@ const ADD_RECORD_FIELDS = [
   { key: 'segmento', label: 'Segmento' },
   { key: 'tr-mx', label: 'TR-MX' },
   { key: 'tr-usa', label: 'TR-USA' },
+  { key: 'tracking', label: 'Tracking' },
   { key: 'cita carga', label: 'Cita carga', type: 'datetime-local' },
   { key: 'llegada carga', label: 'Llegada carga', type: 'datetime-local' },
   { key: 'cita entrega', label: 'Cita entrega', type: 'datetime-local' },
@@ -71,7 +71,6 @@ const dom = {
 const TRIP_EDIT_FIELDS = [
   { key: 'referencia', label: 'Referencia' },
   { key: 'cliente', label: 'Cliente' },
-  { key: 'origen', label: 'Origen' },
   { key: 'destino', label: 'Destino' },
   { key: 'estado', label: 'Estado' },
   { key: 'ejecutivo', label: 'Ejecutivo' },
@@ -80,6 +79,7 @@ const TRIP_EDIT_FIELDS = [
   { key: 'segmento', label: 'Segmento' },
   { key: 'tr-mx', label: 'TR-MX' },
   { key: 'tr-usa', label: 'TR-USA' },
+  { key: 'tracking', label: 'Tracking' },
   { key: 'cita carga', label: 'Cita carga', type: 'datetime-local' },
   { key: 'llegada carga', label: 'Llegada carga', type: 'datetime-local' },
   { key: 'cita entrega', label: 'Cita entrega', type: 'datetime-local' },
@@ -428,7 +428,6 @@ function normalizeObjectRow(row) {
   return {
     referencia: getRowValue(normalizedRow, ['referencia', 'reference', 'ref']),
     cliente: getRowValue(normalizedRow, ['cliente', 'client', 'customer']),
-    origen: getRowValue(normalizedRow, ['origen', 'origin', 'source']),
     destino: getRowValue(normalizedRow, ['destino', 'destination', 'dest']),
     estado: getRowValue(normalizedRow, ['estado', 'estatus', 'status']),
     ejecutivo: getRowValue(normalizedRow, ['ejecutivo']),
@@ -437,6 +436,7 @@ function normalizeObjectRow(row) {
     segmento: getRowValue(normalizedRow, ['segmento']),
     'tr-mx': getRowValue(normalizedRow, ['tr-mx']),
     'tr-usa': getRowValue(normalizedRow, ['tr-usa']),
+    tracking: getRowValue(normalizedRow, ['tracking']),
     'cita carga': formatDateTime(citaCargaRaw),
     'llegada carga': formatDateTime(getRowValue(normalizedRow, ['llegada carga'])),
     'cita entrega': formatDateTime(citaEntregaRaw),
@@ -604,7 +604,6 @@ function buildTripDetails(row) {
   const fields = [
     { label: 'Referencia', value: row.referencia },
     { label: 'Cliente', value: row.cliente },
-    { label: 'Origen', value: row.origen },
     { label: 'Destino', value: row.destino },
     { label: 'Estado', value: row.estado },
     { label: 'Ejecutivo', value: row.ejecutivo },
@@ -613,6 +612,7 @@ function buildTripDetails(row) {
     { label: 'Segmento', value: row.segmento },
     { label: 'TR-MX', value: row['tr-mx'] },
     { label: 'TR-USA', value: row['tr-usa'] },
+    { label: 'Tracking', value: row.tracking },
     { label: 'Cita carga', value: row['cita carga'] },
     { label: 'Llegada carga', value: row['llegada carga'] },
     { label: 'Cita entrega', value: row['cita entrega'] },
@@ -1065,9 +1065,9 @@ function applyFilters(query) {
     return [
       row.referencia,
       row.cliente,
-      row.origen,
       row.destino,
-      row.estado
+      row.estado,
+      row.tracking
     ]
       .filter(Boolean)
       .some((value) => value.toString().toLowerCase().includes(normalizedQuery));
