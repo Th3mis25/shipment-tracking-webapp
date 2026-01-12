@@ -99,9 +99,8 @@ h1 { margin: 0 0 16px; }
 
 .tracking-table {
   border-collapse: collapse;
-  table-layout: auto;
-  width: max-content;
-  min-width: 100%;
+  table-layout: fixed;
+  width: 100%;
 }
 
 .tracking-table th,
