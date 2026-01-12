@@ -9,6 +9,7 @@ const state = {
   data: [],
   filtered: [],
   query: '',
+  view: 'all',
   error: null
 };
 
@@ -18,12 +19,24 @@ const dom = {
   searchInput: null,
   tableBody: null,
   emptyState: null,
+  menuButtons: null,
   tripModal: null,
   tripModalBody: null,
   tripModalTitle: null
 };
 
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
+const DAILY_VIEW = 'daily';
+const DEFAULT_VIEW = 'all';
+const ALLOWED_OVERDUE_STATUSES = new Set([
+  'drop',
+  'live',
+  'loading',
+  'qro yard',
+  'mty yard',
+  'in transit mx'
+]);
+const MEXICO_TZ = 'America/Mexico_City';
 
 // Punto de entrada de la app.
 document.addEventListener('DOMContentLoaded', () => {
@@ -35,31 +48,42 @@ document.addEventListener('DOMContentLoaded', () => {
 // Construye la estructura base dentro de #app.
 function buildLayout() {
   dom.app.innerHTML = `
-    <section class="app-section">
-      <label for="search" class="search-label">Buscar embarque</label>
-      <input
-        id="search"
-        type="search"
-        placeholder="Buscar por referencia, cliente, destino..."
-        autocomplete="off"
-      />
-      <div class="table-wrapper">
-        <table class="tracking-table">
-          <thead>
-            <tr>
-              <th>Cliente</th>
-              <th>Estado</th>
-              <th>Trip</th>
-              <th>Caja</th>
-              <th>TR-MX</th>
-              <th>TR-USA</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <p class="empty-state" hidden>${DEFAULT_EMPTY_MESSAGE}</p>
-    </section>
+    <div class="app-layout">
+      <aside class="side-menu" aria-label="Menú de navegación">
+        <p class="side-menu-title">Menú</p>
+        <button type="button" class="side-menu-button" data-view="${DEFAULT_VIEW}">
+          Todas
+        </button>
+        <button type="button" class="side-menu-button" data-view="${DAILY_VIEW}">
+          Cargas diarias
+        </button>
+      </aside>
+      <section class="app-section">
+        <label for="search" class="search-label">Buscar embarque</label>
+        <input
+          id="search"
+          type="search"
+          placeholder="Buscar por referencia, cliente, destino..."
+          autocomplete="off"
+        />
+        <div class="table-wrapper">
+          <table class="tracking-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Estado</th>
+                <th>Trip</th>
+                <th>Caja</th>
+                <th>TR-MX</th>
+                <th>TR-USA</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="empty-state" hidden>${DEFAULT_EMPTY_MESSAGE}</p>
+      </section>
+    </div>
     <div class="modal-backdrop" hidden>
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="trip-modal-title">
         <header class="modal-header">
@@ -74,9 +98,12 @@ function buildLayout() {
   dom.searchInput = dom.app.querySelector('#search');
   dom.tableBody = dom.app.querySelector('tbody');
   dom.emptyState = dom.app.querySelector('.empty-state');
+  dom.menuButtons = dom.app.querySelectorAll('.side-menu-button');
   dom.tripModal = dom.app.querySelector('.modal-backdrop');
   dom.tripModalBody = dom.app.querySelector('.modal-body');
   dom.tripModalTitle = dom.app.querySelector('#trip-modal-title');
+
+  updateMenuActiveState();
 }
 
 // Enlaza eventos de interacción básicos.
@@ -84,6 +111,16 @@ function bindEvents() {
   dom.searchInput.addEventListener('input', (event) => {
     state.query = event.target.value.trim();
     applyFilters(state.query);
+  });
+
+  dom.app.addEventListener('click', (event) => {
+    const button = event.target.closest('.side-menu-button');
+    if (!button) {
+      return;
+    }
+
+    const view = button.dataset.view || DEFAULT_VIEW;
+    setView(view);
   });
 
   dom.tableBody.addEventListener('click', (event) => {
@@ -138,8 +175,7 @@ async function fetchData() {
     const data = normalizePayload(payload);
     state.error = null;
     state.data = data;
-    state.filtered = [...state.data];
-    renderTable(state.filtered);
+    applyFilters(state.query);
   } catch (error) {
     state.error =
       'No se pudieron cargar los registros. Revisa permisos y acceso del backend.';
@@ -211,6 +247,8 @@ function normalizeArrayRows(rows) {
 
 function normalizeObjectRow(row) {
   const normalizedRow = normalizeRowKeys(row);
+  const citaCargaRaw = getRowValue(normalizedRow, ['cita carga']);
+  const citaCargaDate = parseDateValue(citaCargaRaw);
   return {
     referencia: getRowValue(normalizedRow, ['referencia', 'reference', 'ref']),
     cliente: getRowValue(normalizedRow, ['cliente', 'client', 'customer']),
@@ -223,11 +261,12 @@ function normalizeObjectRow(row) {
     segmento: getRowValue(normalizedRow, ['segmento']),
     'tr-mx': getRowValue(normalizedRow, ['tr-mx']),
     'tr-usa': getRowValue(normalizedRow, ['tr-usa']),
-    'cita carga': formatDateTime(getRowValue(normalizedRow, ['cita carga'])),
+    'cita carga': formatDateTime(citaCargaRaw),
     'llegada carga': formatDateTime(getRowValue(normalizedRow, ['llegada carga'])),
     'cita entrega': formatDateTime(getRowValue(normalizedRow, ['cita entrega'])),
     'llegada entrega': formatDateTime(getRowValue(normalizedRow, ['llegada entrega'])),
-    comentarios: getRowValue(normalizedRow, ['comentarios'])
+    comentarios: getRowValue(normalizedRow, ['comentarios']),
+    citaCargaDate
   };
 }
 
@@ -253,7 +292,7 @@ function formatDateTime(value) {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-    timeZone: 'America/Mexico_City'
+    timeZone: MEXICO_TZ
   });
 
   const parts = formatter.formatToParts(date).reduce((accumulator, part) => {
@@ -262,6 +301,24 @@ function formatDateTime(value) {
   }, {});
 
   return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`;
+}
+
+function parseDateValue(value) {
+  if (!value) {
+    return null;
+  }
+
+  const rawValue = value.toString().trim();
+  if (!rawValue) {
+    return null;
+  }
+
+  const date = new Date(rawValue);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
 }
 
 function getRowValue(row, keys) {
@@ -377,16 +434,96 @@ function buildTripDetails(row) {
   `;
 }
 
+function setView(view) {
+  if (state.view === view) {
+    return;
+  }
+
+  state.view = view;
+  updateMenuActiveState();
+  applyFilters(state.query);
+}
+
+function updateMenuActiveState() {
+  if (!dom.menuButtons) {
+    return;
+  }
+
+  dom.menuButtons.forEach((button) => {
+    const isActive = button.dataset.view === state.view;
+    button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', isActive.toString());
+  });
+}
+
+function getMexicoDateParts(date) {
+  const formatter = new Intl.DateTimeFormat('es-MX', {
+    timeZone: MEXICO_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const parts = formatter.formatToParts(date).reduce((accumulator, part) => {
+    accumulator[part.type] = part.value;
+    return accumulator;
+  }, {});
+
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day)
+  };
+}
+
+function compareMexicoDates(dateA, dateB) {
+  const partsA = getMexicoDateParts(dateA);
+  const partsB = getMexicoDateParts(dateB);
+
+  if (partsA.year !== partsB.year) {
+    return partsA.year - partsB.year;
+  }
+
+  if (partsA.month !== partsB.month) {
+    return partsA.month - partsB.month;
+  }
+
+  return partsA.day - partsB.day;
+}
+
+function shouldIncludeInDailyLoads(row, today) {
+  if (!row.citaCargaDate) {
+    return false;
+  }
+
+  const comparison = compareMexicoDates(row.citaCargaDate, today);
+  if (comparison === 0) {
+    return true;
+  }
+
+  if (comparison < 0) {
+    const status = row.estado ? row.estado.toString().trim().toLowerCase() : '';
+    return ALLOWED_OVERDUE_STATUSES.has(status);
+  }
+
+  return false;
+}
+
 // Filtra la data en memoria usando un query simple.
 function applyFilters(query) {
+  const today = new Date();
+  const baseData =
+    state.view === DAILY_VIEW
+      ? state.data.filter((row) => shouldIncludeInDailyLoads(row, today))
+      : state.data;
+
   if (!query) {
-    state.filtered = [...state.data];
+    state.filtered = [...baseData];
     renderTable(state.filtered);
     return;
   }
 
   const normalizedQuery = query.toLowerCase();
-  state.filtered = state.data.filter((row) => {
+  state.filtered = baseData.filter((row) => {
     return [
       row.referencia,
       row.cliente,
