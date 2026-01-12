@@ -4,39 +4,10 @@
 
 /* global CONFIG */
 
-// Estado centralizado para reutilizar en render y filtros.
-const state = {
-  data: [],
-  filtered: [],
-  query: '',
-  view: 'all',
-  error: null,
-  activeTripRow: null,
-  isEditingTrip: false
-};
-
-// Referencias a elementos principales del DOM.
-const dom = {
-  app: document.getElementById('app'),
-  searchInput: null,
-  tableBody: null,
-  emptyState: null,
-  menuButtons: null,
-  addRecordButton: null,
-  addRecordModal: null,
-  addRecordForm: null,
-  addRecordError: null,
-  addRecordCancel: null,
-  addRecordSave: null,
-  tripModal: null,
-  tripModalBody: null,
-  tripModalTitle: null,
-  tripEditButton: null
-};
-
-const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
+const ALL_VIEW = 'all';
 const DAILY_VIEW = 'daily';
-const DEFAULT_VIEW = 'all';
+const DEFAULT_VIEW = DAILY_VIEW;
+const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
 const ALLOWED_OVERDUE_STATUSES = new Set([
   'drop',
   'live',
@@ -64,6 +35,36 @@ const ADD_RECORD_FIELDS = [
   { key: 'llegada entrega', label: 'Llegada entrega', type: 'datetime-local' },
   { key: 'comentarios', label: 'Comentarios', type: 'textarea' }
 ];
+
+// Estado centralizado para reutilizar en render y filtros.
+const state = {
+  data: [],
+  filtered: [],
+  query: '',
+  view: DEFAULT_VIEW,
+  error: null,
+  activeTripRow: null,
+  isEditingTrip: false
+};
+
+// Referencias a elementos principales del DOM.
+const dom = {
+  app: document.getElementById('app'),
+  searchInput: null,
+  tableBody: null,
+  emptyState: null,
+  menuButtons: null,
+  addRecordButton: null,
+  addRecordModal: null,
+  addRecordForm: null,
+  addRecordError: null,
+  addRecordCancel: null,
+  addRecordSave: null,
+  tripModal: null,
+  tripModalBody: null,
+  tripModalTitle: null,
+  tripEditButton: null
+};
 const TRIP_EDIT_FIELDS = [
   { key: 'referencia', label: 'Referencia' },
   { key: 'cliente', label: 'Cliente' },
@@ -96,7 +97,7 @@ function buildLayout() {
     <div class="app-layout">
       <aside class="side-menu" aria-label="Menú de navegación">
         <p class="side-menu-title">Menú</p>
-        <button type="button" class="side-menu-button" data-view="${DEFAULT_VIEW}">
+        <button type="button" class="side-menu-button" data-view="${ALL_VIEW}">
           Todas
         </button>
         <button type="button" class="side-menu-button" data-view="${DAILY_VIEW}">
