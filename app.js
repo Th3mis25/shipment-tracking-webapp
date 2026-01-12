@@ -10,7 +10,9 @@ const state = {
   filtered: [],
   query: '',
   view: 'all',
-  error: null
+  error: null,
+  activeTripRow: null,
+  isEditingTrip: false
 };
 
 // Referencias a elementos principales del DOM.
@@ -28,7 +30,8 @@ const dom = {
   addRecordSave: null,
   tripModal: null,
   tripModalBody: null,
-  tripModalTitle: null
+  tripModalTitle: null,
+  tripEditButton: null
 };
 
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
@@ -51,6 +54,24 @@ const ADD_RECORD_FIELDS = [
   { key: 'estado', label: 'Estado' },
   { key: 'ejecutivo', label: 'Ejecutivo' },
   { key: 'trip', label: 'Trip', required: true },
+  { key: 'caja', label: 'Caja' },
+  { key: 'segmento', label: 'Segmento' },
+  { key: 'tr-mx', label: 'TR-MX' },
+  { key: 'tr-usa', label: 'TR-USA' },
+  { key: 'cita carga', label: 'Cita carga', type: 'datetime-local' },
+  { key: 'llegada carga', label: 'Llegada carga', type: 'datetime-local' },
+  { key: 'cita entrega', label: 'Cita entrega', type: 'datetime-local' },
+  { key: 'llegada entrega', label: 'Llegada entrega', type: 'datetime-local' },
+  { key: 'comentarios', label: 'Comentarios', type: 'textarea' }
+];
+const TRIP_EDIT_FIELDS = [
+  { key: 'referencia', label: 'Referencia' },
+  { key: 'cliente', label: 'Cliente' },
+  { key: 'origen', label: 'Origen' },
+  { key: 'destino', label: 'Destino' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'ejecutivo', label: 'Ejecutivo' },
+  { key: 'trip', label: 'Trip', disabled: true },
   { key: 'caja', label: 'Caja' },
   { key: 'segmento', label: 'Segmento' },
   { key: 'tr-mx', label: 'TR-MX' },
@@ -119,7 +140,12 @@ function buildLayout() {
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="trip-modal-title">
         <header class="modal-header">
           <h2 id="trip-modal-title">Detalle de trip</h2>
-          <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+          <div class="modal-actions">
+            <button type="button" class="modal-edit" aria-label="Editar trip" title="Editar">
+              ✎
+            </button>
+            <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+          </div>
         </header>
         <div class="modal-body"></div>
       </div>
@@ -150,6 +176,8 @@ function buildLayout() {
   dom.tripModal = dom.app.querySelector('.modal-backdrop');
   dom.tripModalBody = dom.app.querySelector('.modal-body');
   dom.tripModalTitle = dom.app.querySelector('#trip-modal-title');
+  dom.tripEditButton = dom.app.querySelector('.modal-edit');
+  dom.tripEditButton.hidden = true;
 
   updateMenuActiveState();
 }
@@ -194,6 +222,27 @@ function bindEvents() {
     if (event.target === dom.tripModal || event.target.closest('.modal-close')) {
       closeTripModal();
     }
+  });
+  dom.tripEditButton.addEventListener('click', () => {
+    if (!state.activeTripRow) {
+      return;
+    }
+    enterTripEditMode();
+  });
+
+  dom.tripModalBody.addEventListener('submit', (event) => {
+    if (!event.target.closest('.trip-edit-form')) {
+      return;
+    }
+    handleTripEditSubmit(event);
+  });
+
+  dom.tripModalBody.addEventListener('click', (event) => {
+    const cancelButton = event.target.closest('.trip-edit-cancel');
+    if (!cancelButton) {
+      return;
+    }
+    exitTripEditMode();
   });
 
   dom.addRecordModal.addEventListener('click', (event) => {
@@ -460,8 +509,11 @@ function renderTripCell(tripValue, index) {
 
 function openTripModal(row) {
   const tripValue = row.trip || 'Trip';
+  state.activeTripRow = row;
+  state.isEditingTrip = false;
   dom.tripModalTitle.textContent = `Detalle de trip ${tripValue}`;
   dom.tripModalBody.innerHTML = buildTripDetails(row);
+  dom.tripEditButton.hidden = false;
   dom.tripModal.hidden = false;
 }
 
@@ -469,6 +521,9 @@ function closeTripModal() {
   dom.tripModal.hidden = true;
   dom.tripModalBody.innerHTML = '';
   dom.tripModalTitle.textContent = 'Detalle de trip';
+  dom.tripEditButton.hidden = true;
+  state.activeTripRow = null;
+  state.isEditingTrip = false;
 }
 
 function openAddRecordModal() {
@@ -526,6 +581,199 @@ function buildTripDetails(row) {
         .join('')}
     </dl>
   `;
+}
+
+function buildTripEditForm(row) {
+  return `
+    <form class="trip-edit-form">
+      <p class="form-hint">
+        Puedes editar la información del trip seleccionado. El número de trip no se puede modificar.
+      </p>
+      <div class="form-grid">
+        ${TRIP_EDIT_FIELDS.map((field, index) => buildTripEditField(field, index, row)).join('')}
+      </div>
+      <p class="trip-edit-error" role="alert" aria-live="polite" hidden></p>
+      <div class="form-actions">
+        <button type="button" class="secondary-button trip-edit-cancel">Cancelar</button>
+        <button type="submit" class="primary-button trip-edit-save">Guardar cambios</button>
+      </div>
+    </form>
+  `;
+}
+
+function buildTripEditField(field, index, row) {
+  const id = `trip-edit-field-${index}`;
+  const inputType = field.type || 'text';
+  const value = getTripFieldValue(row, field.key);
+  const inputValue =
+    inputType === 'datetime-local' ? toInputDateTimeValue(value) : value || '';
+  const disabled = field.disabled ? 'disabled' : '';
+
+  if (inputType === 'textarea') {
+    return `
+      <div class="form-field form-field-full">
+        <label for="${id}">${field.label}</label>
+        <textarea id="${id}" data-field="${field.key}" rows="3" ${disabled}>${inputValue}</textarea>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="form-field">
+      <label for="${id}">${field.label}</label>
+      <input id="${id}" type="${inputType}" data-field="${field.key}" value="${inputValue}" ${disabled} />
+    </div>
+  `;
+}
+
+function getTripFieldValue(row, key) {
+  if (!row) {
+    return '';
+  }
+  return row[key] ?? '';
+}
+
+function toInputDateTimeValue(value) {
+  if (!value) {
+    return '';
+  }
+
+  const stringValue = value.toString().trim();
+  if (!stringValue) {
+    return '';
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(stringValue)) {
+    return stringValue.slice(0, 16);
+  }
+
+  const match = stringValue.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/);
+  if (match) {
+    const [, day, month, year, hour, minute] = match;
+    return `${year}-${month}-${day}T${hour}:${minute}`;
+  }
+
+  const date = parseDateValue(stringValue);
+  if (!date) {
+    return '';
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+function enterTripEditMode() {
+  if (!state.activeTripRow) {
+    return;
+  }
+  state.isEditingTrip = true;
+  const tripValue = state.activeTripRow.trip || 'Trip';
+  dom.tripModalTitle.textContent = `Editar trip ${tripValue}`;
+  dom.tripModalBody.innerHTML = buildTripEditForm(state.activeTripRow);
+  dom.tripEditButton.hidden = true;
+}
+
+function exitTripEditMode() {
+  if (!state.activeTripRow) {
+    return;
+  }
+  state.isEditingTrip = false;
+  const tripValue = state.activeTripRow.trip || 'Trip';
+  dom.tripModalTitle.textContent = `Detalle de trip ${tripValue}`;
+  dom.tripModalBody.innerHTML = buildTripDetails(state.activeTripRow);
+  dom.tripEditButton.hidden = false;
+}
+
+function getTripEditFormData() {
+  const record = {};
+  dom.tripModalBody.querySelectorAll('[data-field]').forEach((input) => {
+    const key = input.dataset.field;
+    const value = input.value.trim();
+    if (key) {
+      record[key] = value;
+    }
+  });
+  return record;
+}
+
+function setTripEditError(message) {
+  const errorElement = dom.tripModalBody.querySelector('.trip-edit-error');
+  if (!errorElement) {
+    return;
+  }
+  errorElement.textContent = message;
+  errorElement.hidden = !message;
+}
+
+function setTripEditSubmitting(isSubmitting) {
+  const saveButton = dom.tripModalBody.querySelector('.trip-edit-save');
+  const cancelButton = dom.tripModalBody.querySelector('.trip-edit-cancel');
+  if (saveButton) {
+    saveButton.disabled = isSubmitting;
+  }
+  if (cancelButton) {
+    cancelButton.disabled = isSubmitting;
+  }
+}
+
+async function handleTripEditSubmit(event) {
+  event.preventDefault();
+  if (!state.activeTripRow) {
+    return;
+  }
+
+  if (!CONFIG || !CONFIG.API_URL || CONFIG.API_URL.includes('PEGAR_AQUI')) {
+    setTripEditError('Configura CONFIG.API_URL en config.js para guardar cambios.');
+    return;
+  }
+
+  const record = getTripEditFormData();
+  record.trip = state.activeTripRow.trip || record.trip;
+
+  setTripEditError('');
+  setTripEditSubmitting(true);
+
+  try {
+    const response = await fetch(CONFIG.API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ action: 'update', record })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP ${response.status}`);
+    }
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (payload?.success === false) {
+      throw new Error(payload.error || 'El backend respondió con un error.');
+    }
+
+    const normalizedRecord = normalizeObjectRow(record);
+    Object.assign(state.activeTripRow, normalizedRecord);
+    applyFilters(state.query);
+    exitTripEditMode();
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? `No se pudo actualizar el registro. (${error.message}).`
+        : 'No se pudo actualizar el registro.';
+    setTripEditError(message);
+  } finally {
+    setTripEditSubmitting(false);
+  }
 }
 
 function buildAddRecordForm() {

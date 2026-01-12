@@ -136,10 +136,18 @@ h1 { margin: 0 0 16px; }
 
 .modal-header h2 { font-size: 20px; margin: 0; }
 
+.modal-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.modal-edit,
 .modal-close {
   background: none;
   border: none;
   cursor: pointer;
+  font: inherit;
   font-size: 24px;
   line-height: 1;
 }
@@ -236,6 +244,11 @@ h1 { margin: 0 0 16px; }
 }
 
 .add-record-error {
+  color: #b42318;
+  margin: 0;
+}
+
+.trip-edit-error {
   color: #b42318;
   margin: 0;
 }
