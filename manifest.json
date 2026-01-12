@@ -1,1 +1,9 @@
-{ "name": "Tracking Cargas", "short_name": "Cargas", "start_url": "/", "display": "standalone" }
+{
+  "name": "Tracking Cargas",
+  "short_name": "Cargas",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}
