@@ -6,6 +6,7 @@ h1 { margin: 0 0 16px; }
   align-items: flex-start;
   display: flex;
   gap: 24px;
+  width: 100%;
 }
 
 .side-menu {
@@ -68,6 +69,8 @@ h1 { margin: 0 0 16px; }
   display: grid;
   gap: 12px;
   flex: 1;
+  min-width: 0;
+  width: 100%;
 }
 
 .toolbar {
@@ -95,10 +98,14 @@ h1 { margin: 0 0 16px; }
   width: min(420px, 100%);
 }
 
-.table-wrapper { overflow-x: auto; }
+.table-wrapper {
+  overflow-x: auto;
+  width: 100%;
+}
 
 .tracking-table {
   border-collapse: collapse;
+  min-width: 100%;
   table-layout: fixed;
   width: 100%;
 }
