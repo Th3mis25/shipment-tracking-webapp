@@ -221,7 +221,7 @@ function formatDateTime(value) {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-    timeZone: 'UTC'
+    timeZone: 'America/Mexico_City'
   });
 
   const parts = formatter.formatToParts(date).reduce((accumulator, part) => {
