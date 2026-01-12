@@ -1041,7 +1041,7 @@ function shouldIncludeInTodayDeliveries(row, today) {
   }
 
   const status = row.estado ? row.estado.toString().trim().toLowerCase() : '';
-  return status !== 'delivered';
+  return status !== 'delivered' && status !== 'cancelled';
 }
 
 // Filtra la data en memoria usando un query simple.
