@@ -126,8 +126,14 @@ function buildLayout() {
               autocomplete="off"
             />
           </div>
-          <button type="button" class="primary-button" id="add-record-button">
-            Agregar registro
+          <button
+            type="button"
+            class="primary-button"
+            id="add-record-button"
+            aria-label="Agregar registro"
+            title="Agregar registro"
+          >
+            +
           </button>
         </div>
         <div class="table-wrapper">
