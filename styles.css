@@ -47,6 +47,10 @@ h1 { margin: 0 0 16px; }
   z-index: 5;
 }
 
+.side-menu-content[hidden] {
+  display: none;
+}
+
 .side-menu-button {
   background: #fff;
   border: 1px solid #d0d7e2;
