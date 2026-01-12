@@ -32,6 +32,10 @@ body { font-family: Arial, sans-serif; margin: 0; padding: 16px; }
   z-index: 10;
 }
 
+.modal-backdrop[hidden] {
+  display: none;
+}
+
 .modal {
   background: #fff;
   border-radius: 12px;
