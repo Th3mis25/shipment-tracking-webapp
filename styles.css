@@ -99,9 +99,9 @@ h1 { margin: 0 0 16px; }
 
 .tracking-table {
   border-collapse: collapse;
-  table-layout: fixed;
-  width: 100%;
-  min-width: 720px;
+  table-layout: auto;
+  width: max-content;
+  min-width: 100%;
 }
 
 .tracking-table th,
@@ -109,7 +109,7 @@ h1 { margin: 0 0 16px; }
   border-bottom: 1px solid #e0e0e0;
   padding: 10px 12px;
   text-align: left;
-  word-break: break-word;
+  white-space: nowrap;
 }
 
 .tracking-table th { background: #f6f7f9; font-weight: 600; position: sticky; top: 0; z-index: 1; }
