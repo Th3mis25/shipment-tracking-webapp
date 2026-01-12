@@ -18,6 +18,22 @@ const ALLOWED_OVERDUE_STATUSES = new Set([
   'in transit mx'
 ]);
 const MEXICO_TZ = 'America/Mexico_City';
+const DEFAULT_TABLE_COLUMNS = [
+  { key: 'cliente', label: 'Cliente' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'trip', label: 'Trip' },
+  { key: 'caja', label: 'Caja' },
+  { key: 'tr-mx', label: 'TR-MX' },
+  { key: 'tr-usa', label: 'TR-USA' }
+];
+const DAILY_TABLE_COLUMNS = [
+  { key: 'cliente', label: 'Cliente' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'trip', label: 'Trip' },
+  { key: 'caja', label: 'Caja' },
+  { key: 'tr-mx', label: 'TR-MX' },
+  { key: 'cita carga', label: 'Cita carga' }
+];
 const ADD_RECORD_FIELDS = [
   { key: 'referencia', label: 'Referencia' },
   { key: 'cliente', label: 'Cliente' },
@@ -53,6 +69,7 @@ const dom = {
   app: document.getElementById('app'),
   searchInput: null,
   tableBody: null,
+  tableHead: null,
   emptyState: null,
   menuButtons: null,
   menuToggle: null,
@@ -187,6 +204,7 @@ function buildLayout() {
 
   dom.searchInput = dom.app.querySelector('#search');
   dom.tableBody = dom.app.querySelector('tbody');
+  dom.tableHead = dom.app.querySelector('.tracking-table thead');
   dom.emptyState = dom.app.querySelector('.empty-state');
   dom.menuButtons = dom.app.querySelectorAll('.side-menu-button');
   dom.menuToggle = dom.app.querySelector('.side-menu-toggle');
@@ -530,16 +548,23 @@ function renderTable(data) {
     return;
   }
 
+  const columns = getTableColumns();
+  renderTableHeader(columns);
+
   dom.tableBody.innerHTML = data
     .map((row, index) => {
+      const cells = columns
+        .map((column) => {
+          if (column.key === 'trip') {
+            return `<td>${renderTripCell(row.trip, index)}</td>`;
+          }
+          const value = row[column.key];
+          return `<td>${value || '-'}</td>`;
+        })
+        .join('');
       return `
         <tr>
-          <td>${row.cliente || '-'}</td>
-          <td>${row.estado || '-'}</td>
-          <td>${renderTripCell(row.trip, index)}</td>
-          <td>${row.caja || '-'}</td>
-          <td>${row['tr-mx'] || '-'}</td>
-          <td>${row['tr-usa'] || '-'}</td>
+          ${cells}
         </tr>
       `;
     })
@@ -547,6 +572,22 @@ function renderTable(data) {
 
   dom.emptyState.textContent = state.error || DEFAULT_EMPTY_MESSAGE;
   dom.emptyState.hidden = data.length > 0;
+}
+
+function renderTableHeader(columns) {
+  if (!dom.tableHead) {
+    return;
+  }
+
+  dom.tableHead.innerHTML = `
+    <tr>
+      ${columns.map((column) => `<th>${column.label}</th>`).join('')}
+    </tr>
+  `;
+}
+
+function getTableColumns() {
+  return state.view === DAILY_VIEW ? DAILY_TABLE_COLUMNS : DEFAULT_TABLE_COLUMNS;
 }
 
 function renderTripCell(tripValue, index) {
