@@ -102,11 +102,11 @@ function buildLayout() {
           type="button"
           class="side-menu-toggle"
           aria-label="Mostrar u ocultar menú"
-          aria-expanded="true"
+          aria-expanded="false"
         >
           ☰
         </button>
-        <div class="side-menu-content">
+        <div class="side-menu-content" hidden>
           <button type="button" class="side-menu-button" data-view="${ALL_VIEW}">
             Todas
           </button>
@@ -221,6 +221,7 @@ function bindEvents() {
 
     const view = button.dataset.view || DEFAULT_VIEW;
     setView(view);
+    setMenuOpen(false);
   });
 
   dom.tableBody.addEventListener('click', (event) => {
@@ -291,6 +292,21 @@ function bindEvents() {
     if (!dom.addRecordModal.hidden) {
       closeAddRecordModal();
     }
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!dom.menuToggle || !dom.menuContent) {
+      return;
+    }
+    const isOpen = dom.menuToggle.getAttribute('aria-expanded') === 'true';
+    if (!isOpen) {
+      return;
+    }
+    const target = event.target;
+    if (dom.menuToggle.contains(target) || dom.menuContent.contains(target)) {
+      return;
+    }
+    setMenuOpen(false);
   });
 }
 
