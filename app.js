@@ -20,6 +20,12 @@ const dom = {
   tableBody: null,
   emptyState: null,
   menuButtons: null,
+  addRecordButton: null,
+  addRecordModal: null,
+  addRecordForm: null,
+  addRecordError: null,
+  addRecordCancel: null,
+  addRecordSave: null,
   tripModal: null,
   tripModalBody: null,
   tripModalTitle: null
@@ -37,6 +43,24 @@ const ALLOWED_OVERDUE_STATUSES = new Set([
   'in transit mx'
 ]);
 const MEXICO_TZ = 'America/Mexico_City';
+const ADD_RECORD_FIELDS = [
+  { key: 'referencia', label: 'Referencia' },
+  { key: 'cliente', label: 'Cliente' },
+  { key: 'origen', label: 'Origen' },
+  { key: 'destino', label: 'Destino' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'ejecutivo', label: 'Ejecutivo' },
+  { key: 'trip', label: 'Trip', required: true },
+  { key: 'caja', label: 'Caja' },
+  { key: 'segmento', label: 'Segmento' },
+  { key: 'tr-mx', label: 'TR-MX' },
+  { key: 'tr-usa', label: 'TR-USA' },
+  { key: 'cita carga', label: 'Cita carga', type: 'datetime-local' },
+  { key: 'llegada carga', label: 'Llegada carga', type: 'datetime-local' },
+  { key: 'cita entrega', label: 'Cita entrega', type: 'datetime-local' },
+  { key: 'llegada entrega', label: 'Llegada entrega', type: 'datetime-local' },
+  { key: 'comentarios', label: 'Comentarios', type: 'textarea' }
+];
 
 // Punto de entrada de la app.
 document.addEventListener('DOMContentLoaded', () => {
@@ -59,13 +83,20 @@ function buildLayout() {
         </button>
       </aside>
       <section class="app-section">
-        <label for="search" class="search-label">Buscar embarque</label>
-        <input
-          id="search"
-          type="search"
-          placeholder="Buscar por referencia, cliente, destino..."
-          autocomplete="off"
-        />
+        <div class="toolbar">
+          <div class="search-group">
+            <label for="search" class="search-label">Buscar embarque</label>
+            <input
+              id="search"
+              type="search"
+              placeholder="Buscar por referencia, cliente, destino..."
+              autocomplete="off"
+            />
+          </div>
+          <button type="button" class="primary-button" id="add-record-button">
+            Agregar registro
+          </button>
+        </div>
         <div class="table-wrapper">
           <table class="tracking-table">
             <thead>
@@ -93,12 +124,29 @@ function buildLayout() {
         <div class="modal-body"></div>
       </div>
     </div>
+    <div class="modal-backdrop add-record-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="add-record-title">
+        <header class="modal-header">
+          <h2 id="add-record-title">Agregar registro</h2>
+          <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+        </header>
+        <div class="modal-body">
+          ${buildAddRecordForm()}
+        </div>
+      </div>
+    </div>
   `;
 
   dom.searchInput = dom.app.querySelector('#search');
   dom.tableBody = dom.app.querySelector('tbody');
   dom.emptyState = dom.app.querySelector('.empty-state');
   dom.menuButtons = dom.app.querySelectorAll('.side-menu-button');
+  dom.addRecordButton = dom.app.querySelector('#add-record-button');
+  dom.addRecordModal = dom.app.querySelector('.add-record-modal');
+  dom.addRecordForm = dom.app.querySelector('.add-record-form');
+  dom.addRecordError = dom.app.querySelector('.add-record-error');
+  dom.addRecordCancel = dom.app.querySelector('.add-record-cancel');
+  dom.addRecordSave = dom.app.querySelector('.add-record-save');
   dom.tripModal = dom.app.querySelector('.modal-backdrop');
   dom.tripModalBody = dom.app.querySelector('.modal-body');
   dom.tripModalTitle = dom.app.querySelector('#trip-modal-title');
@@ -111,6 +159,10 @@ function bindEvents() {
   dom.searchInput.addEventListener('input', (event) => {
     state.query = event.target.value.trim();
     applyFilters(state.query);
+  });
+
+  dom.addRecordButton.addEventListener('click', () => {
+    openAddRecordModal();
   });
 
   dom.app.addEventListener('click', (event) => {
@@ -144,9 +196,31 @@ function bindEvents() {
     }
   });
 
+  dom.addRecordModal.addEventListener('click', (event) => {
+    if (event.target === dom.addRecordModal || event.target.closest('.modal-close')) {
+      closeAddRecordModal();
+    }
+  });
+
+  dom.addRecordCancel.addEventListener('click', () => {
+    closeAddRecordModal();
+  });
+
+  dom.addRecordForm.addEventListener('submit', (event) => {
+    handleAddRecordSubmit(event);
+  });
+
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !dom.tripModal.hidden) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+
+    if (!dom.tripModal.hidden) {
       closeTripModal();
+    }
+
+    if (!dom.addRecordModal.hidden) {
+      closeAddRecordModal();
     }
   });
 }
@@ -397,6 +471,26 @@ function closeTripModal() {
   dom.tripModalTitle.textContent = 'Detalle de trip';
 }
 
+function openAddRecordModal() {
+  if (!dom.addRecordModal) {
+    return;
+  }
+
+  closeTripModal();
+  dom.addRecordModal.hidden = false;
+  dom.addRecordForm.reset();
+  setAddRecordError('');
+}
+
+function closeAddRecordModal() {
+  if (!dom.addRecordModal) {
+    return;
+  }
+
+  dom.addRecordModal.hidden = true;
+  setAddRecordError('');
+}
+
 function buildTripDetails(row) {
   const fields = [
     { label: 'Referencia', value: row.referencia },
@@ -432,6 +526,131 @@ function buildTripDetails(row) {
         .join('')}
     </dl>
   `;
+}
+
+function buildAddRecordForm() {
+  return `
+    <form class="add-record-form">
+      <p class="form-hint">
+        Completa todos los campos que apliquen. <span class="required-marker">*</span> Trip es obligatorio.
+      </p>
+      <div class="form-grid">
+        ${ADD_RECORD_FIELDS.map((field, index) => buildAddRecordField(field, index)).join('')}
+      </div>
+      <p class="add-record-error" role="alert" aria-live="polite"></p>
+      <div class="form-actions">
+        <button type="button" class="secondary-button add-record-cancel">Cancelar</button>
+        <button type="submit" class="primary-button add-record-save">Guardar</button>
+      </div>
+    </form>
+  `;
+}
+
+function buildAddRecordField(field, index) {
+  const id = `add-record-field-${index}`;
+  const required = field.required ? 'required' : '';
+  const requiredMark = field.required ? '<span class="required-marker">*</span>' : '';
+  const inputType = field.type || 'text';
+
+  if (inputType === 'textarea') {
+    return `
+      <div class="form-field form-field-full">
+        <label for="${id}">${field.label} ${requiredMark}</label>
+        <textarea id="${id}" data-field="${field.key}" rows="3" ${required}></textarea>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="form-field">
+      <label for="${id}">${field.label} ${requiredMark}</label>
+      <input id="${id}" type="${inputType}" data-field="${field.key}" ${required} />
+    </div>
+  `;
+}
+
+function getAddRecordFormData() {
+  const record = {};
+  dom.addRecordForm.querySelectorAll('[data-field]').forEach((input) => {
+    const key = input.dataset.field;
+    const value = input.value.trim();
+    if (key) {
+      record[key] = value;
+    }
+  });
+  return record;
+}
+
+function setAddRecordError(message) {
+  if (!dom.addRecordError) {
+    return;
+  }
+  dom.addRecordError.textContent = message;
+  dom.addRecordError.hidden = !message;
+}
+
+function setAddRecordSubmitting(isSubmitting) {
+  if (dom.addRecordSave) {
+    dom.addRecordSave.disabled = isSubmitting;
+  }
+  if (dom.addRecordCancel) {
+    dom.addRecordCancel.disabled = isSubmitting;
+  }
+}
+
+async function handleAddRecordSubmit(event) {
+  event.preventDefault();
+  if (!CONFIG || !CONFIG.API_URL || CONFIG.API_URL.includes('PEGAR_AQUI')) {
+    setAddRecordError('Configura CONFIG.API_URL en config.js para guardar registros.');
+    return;
+  }
+
+  const record = getAddRecordFormData();
+  if (!record.trip) {
+    setAddRecordError('Trip es obligatorio.');
+    return;
+  }
+
+  setAddRecordError('');
+  setAddRecordSubmitting(true);
+
+  try {
+    const response = await fetch(CONFIG.API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ action: 'create', record })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error HTTP ${response.status}`);
+    }
+
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (payload?.success === false) {
+      throw new Error(payload.error || 'El backend respondió con un error.');
+    }
+
+    const normalizedRecord = normalizeObjectRow(record);
+    state.data = [normalizedRecord, ...state.data];
+    applyFilters(state.query);
+    closeAddRecordModal();
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? `No se pudo guardar el registro. (${error.message}).`
+        : 'No se pudo guardar el registro.';
+    setAddRecordError(message);
+  } finally {
+    setAddRecordSubmitting(false);
+  }
 }
 
 function setView(view) {
