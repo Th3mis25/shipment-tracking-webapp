@@ -6,6 +6,7 @@
 
 const ALL_VIEW = 'all';
 const DAILY_VIEW = 'daily';
+const TODAY_DELIVERIES_VIEW = 'today-deliveries';
 const DEFAULT_VIEW = DAILY_VIEW;
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
 const ALLOWED_OVERDUE_STATUSES = new Set([
@@ -112,6 +113,9 @@ function buildLayout() {
           </button>
           <button type="button" class="side-menu-button" data-view="${DAILY_VIEW}">
             Cargas diarias
+          </button>
+          <button type="button" class="side-menu-button" data-view="${TODAY_DELIVERIES_VIEW}">
+            Entregas hoy
           </button>
         </div>
       </aside>
@@ -419,6 +423,8 @@ function normalizeObjectRow(row) {
   const normalizedRow = normalizeRowKeys(row);
   const citaCargaRaw = getRowValue(normalizedRow, ['cita carga']);
   const citaCargaDate = parseDateValue(citaCargaRaw);
+  const citaEntregaRaw = getRowValue(normalizedRow, ['cita entrega']);
+  const citaEntregaDate = parseDateValue(citaEntregaRaw);
   return {
     referencia: getRowValue(normalizedRow, ['referencia', 'reference', 'ref']),
     cliente: getRowValue(normalizedRow, ['cliente', 'client', 'customer']),
@@ -433,10 +439,11 @@ function normalizeObjectRow(row) {
     'tr-usa': getRowValue(normalizedRow, ['tr-usa']),
     'cita carga': formatDateTime(citaCargaRaw),
     'llegada carga': formatDateTime(getRowValue(normalizedRow, ['llegada carga'])),
-    'cita entrega': formatDateTime(getRowValue(normalizedRow, ['cita entrega'])),
+    'cita entrega': formatDateTime(citaEntregaRaw),
     'llegada entrega': formatDateTime(getRowValue(normalizedRow, ['llegada entrega'])),
     comentarios: getRowValue(normalizedRow, ['comentarios']),
-    citaCargaDate
+    citaCargaDate,
+    citaEntregaDate
   };
 }
 
@@ -1023,13 +1030,29 @@ function shouldIncludeInDailyLoads(row, today) {
   return false;
 }
 
+function shouldIncludeInTodayDeliveries(row, today) {
+  if (!row.citaEntregaDate) {
+    return false;
+  }
+
+  const comparison = compareMexicoDates(row.citaEntregaDate, today);
+  if (comparison > 0) {
+    return false;
+  }
+
+  const status = row.estado ? row.estado.toString().trim().toLowerCase() : '';
+  return status !== 'delivered';
+}
+
 // Filtra la data en memoria usando un query simple.
 function applyFilters(query) {
   const today = new Date();
-  const baseData =
-    state.view === DAILY_VIEW
-      ? state.data.filter((row) => shouldIncludeInDailyLoads(row, today))
-      : state.data;
+  let baseData = state.data;
+  if (state.view === DAILY_VIEW) {
+    baseData = state.data.filter((row) => shouldIncludeInDailyLoads(row, today));
+  } else if (state.view === TODAY_DELIVERIES_VIEW) {
+    baseData = state.data.filter((row) => shouldIncludeInTodayDeliveries(row, today));
+  }
 
   if (!query) {
     state.filtered = [...baseData];
