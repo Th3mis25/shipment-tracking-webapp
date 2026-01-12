@@ -740,10 +740,10 @@ async function handleTripEditSubmit(event) {
   try {
     const response = await fetch(CONFIG.API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ action: 'update', record })
+      body: new URLSearchParams({
+        action: 'update',
+        record: JSON.stringify(record)
+      })
     });
 
     if (!response.ok) {
@@ -865,10 +865,10 @@ async function handleAddRecordSubmit(event) {
   try {
     const response = await fetch(CONFIG.API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ action: 'create', record })
+      body: new URLSearchParams({
+        action: 'create',
+        record: JSON.stringify(record)
+      })
     });
 
     if (!response.ok) {
