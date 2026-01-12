@@ -54,6 +54,8 @@ const dom = {
   tableBody: null,
   emptyState: null,
   menuButtons: null,
+  menuToggle: null,
+  menuContent: null,
   addRecordButton: null,
   addRecordModal: null,
   addRecordForm: null,
@@ -96,13 +98,22 @@ function buildLayout() {
   dom.app.innerHTML = `
     <div class="app-layout">
       <aside class="side-menu" aria-label="Menú de navegación">
-        <p class="side-menu-title">Menú</p>
-        <button type="button" class="side-menu-button" data-view="${ALL_VIEW}">
-          Todas
+        <button
+          type="button"
+          class="side-menu-toggle"
+          aria-label="Mostrar u ocultar menú"
+          aria-expanded="true"
+        >
+          ☰
         </button>
-        <button type="button" class="side-menu-button" data-view="${DAILY_VIEW}">
-          Cargas diarias
-        </button>
+        <div class="side-menu-content">
+          <button type="button" class="side-menu-button" data-view="${ALL_VIEW}">
+            Todas
+          </button>
+          <button type="button" class="side-menu-button" data-view="${DAILY_VIEW}">
+            Cargas diarias
+          </button>
+        </div>
       </aside>
       <section class="app-section">
         <div class="toolbar">
@@ -168,6 +179,8 @@ function buildLayout() {
   dom.tableBody = dom.app.querySelector('tbody');
   dom.emptyState = dom.app.querySelector('.empty-state');
   dom.menuButtons = dom.app.querySelectorAll('.side-menu-button');
+  dom.menuToggle = dom.app.querySelector('.side-menu-toggle');
+  dom.menuContent = dom.app.querySelector('.side-menu-content');
   dom.addRecordButton = dom.app.querySelector('#add-record-button');
   dom.addRecordModal = dom.app.querySelector('.add-record-modal');
   dom.addRecordForm = dom.app.querySelector('.add-record-form');
@@ -181,10 +194,16 @@ function buildLayout() {
   dom.tripEditButton.hidden = true;
 
   updateMenuActiveState();
+  setMenuOpen(true);
 }
 
 // Enlaza eventos de interacción básicos.
 function bindEvents() {
+  dom.menuToggle.addEventListener('click', () => {
+    const isOpen = dom.menuToggle.getAttribute('aria-expanded') === 'true';
+    setMenuOpen(!isOpen);
+  });
+
   dom.searchInput.addEventListener('input', (event) => {
     state.query = event.target.value.trim();
     applyFilters(state.query);
@@ -273,6 +292,11 @@ function bindEvents() {
       closeAddRecordModal();
     }
   });
+}
+
+function setMenuOpen(isOpen) {
+  dom.menuToggle.setAttribute('aria-expanded', String(isOpen));
+  dom.menuContent.hidden = !isOpen;
 }
 
 // Obtiene datos desde Google Apps Script.

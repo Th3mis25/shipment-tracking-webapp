@@ -17,9 +17,23 @@ h1 { margin: 0 0 16px; }
   padding: 16px;
 }
 
-.side-menu-title {
-  font-weight: 600;
-  margin: 0;
+.side-menu-toggle {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #d0d7e2;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 20px;
+  height: 40px;
+  justify-content: center;
+  padding: 0;
+  width: 40px;
+}
+
+.side-menu-content {
+  display: grid;
+  gap: 10px;
 }
 
 .side-menu-button {
