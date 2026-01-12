@@ -9,12 +9,8 @@ h1 { margin: 0 0 16px; }
 }
 
 .side-menu {
-  background: #f6f7f9;
-  border-radius: 12px;
   display: grid;
   gap: 10px;
-  min-width: 180px;
-  padding: 16px;
   position: relative;
 }
 
