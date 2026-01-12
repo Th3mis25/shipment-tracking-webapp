@@ -17,7 +17,10 @@ const dom = {
   app: document.getElementById('app'),
   searchInput: null,
   tableBody: null,
-  emptyState: null
+  emptyState: null,
+  tripModal: null,
+  tripModalBody: null,
+  tripModalTitle: null
 };
 
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
@@ -67,11 +70,23 @@ function buildLayout() {
       </div>
       <p class="empty-state" hidden>${DEFAULT_EMPTY_MESSAGE}</p>
     </section>
+    <div class="modal-backdrop" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="trip-modal-title">
+        <header class="modal-header">
+          <h2 id="trip-modal-title">Detalle de trip</h2>
+          <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+        </header>
+        <div class="modal-body"></div>
+      </div>
+    </div>
   `;
 
   dom.searchInput = dom.app.querySelector('#search');
   dom.tableBody = dom.app.querySelector('tbody');
   dom.emptyState = dom.app.querySelector('.empty-state');
+  dom.tripModal = dom.app.querySelector('.modal-backdrop');
+  dom.tripModalBody = dom.app.querySelector('.modal-body');
+  dom.tripModalTitle = dom.app.querySelector('#trip-modal-title');
 }
 
 // Enlaza eventos de interacción básicos.
@@ -79,6 +94,33 @@ function bindEvents() {
   dom.searchInput.addEventListener('input', (event) => {
     state.query = event.target.value.trim();
     applyFilters(state.query);
+  });
+
+  dom.tableBody.addEventListener('click', (event) => {
+    const target = event.target.closest('.trip-link');
+    if (!target) {
+      return;
+    }
+
+    const rowIndex = Number(target.dataset.rowIndex);
+    const row = state.filtered[rowIndex];
+    if (!row) {
+      return;
+    }
+
+    openTripModal(row);
+  });
+
+  dom.tripModal.addEventListener('click', (event) => {
+    if (event.target === dom.tripModal || event.target.closest('.modal-close')) {
+      closeTripModal();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !dom.tripModal.hidden) {
+      closeTripModal();
+    }
   });
 }
 
@@ -265,7 +307,7 @@ function renderTable(data) {
   }
 
   dom.tableBody.innerHTML = data
-    .map((row) => {
+    .map((row, index) => {
       return `
         <tr>
           <td>${row.referencia || '-'}</td>
@@ -274,7 +316,7 @@ function renderTable(data) {
           <td>${row.destino || '-'}</td>
           <td>${row.estado || '-'}</td>
           <td>${row.ejecutivo || '-'}</td>
-          <td>${row.trip || '-'}</td>
+          <td>${renderTripCell(row.trip, index)}</td>
           <td>${row.caja || '-'}</td>
           <td>${row.segmento || '-'}</td>
           <td>${row['tr-mx'] || '-'}</td>
@@ -291,6 +333,68 @@ function renderTable(data) {
 
   dom.emptyState.textContent = state.error || DEFAULT_EMPTY_MESSAGE;
   dom.emptyState.hidden = data.length > 0;
+}
+
+function renderTripCell(tripValue, index) {
+  if (!tripValue) {
+    return '-';
+  }
+
+  return `
+    <button type="button" class="trip-link" data-row-index="${index}">
+      ${tripValue}
+    </button>
+  `;
+}
+
+function openTripModal(row) {
+  const tripValue = row.trip || 'Trip';
+  dom.tripModalTitle.textContent = `Detalle de trip ${tripValue}`;
+  dom.tripModalBody.innerHTML = buildTripDetails(row);
+  dom.tripModal.hidden = false;
+}
+
+function closeTripModal() {
+  dom.tripModal.hidden = true;
+  dom.tripModalBody.innerHTML = '';
+  dom.tripModalTitle.textContent = 'Detalle de trip';
+}
+
+function buildTripDetails(row) {
+  const fields = [
+    { label: 'Referencia', value: row.referencia },
+    { label: 'Cliente', value: row.cliente },
+    { label: 'Origen', value: row.origen },
+    { label: 'Destino', value: row.destino },
+    { label: 'Estado', value: row.estado },
+    { label: 'Ejecutivo', value: row.ejecutivo },
+    { label: 'Trip', value: row.trip },
+    { label: 'Caja', value: row.caja },
+    { label: 'Segmento', value: row.segmento },
+    { label: 'TR-MX', value: row['tr-mx'] },
+    { label: 'TR-USA', value: row['tr-usa'] },
+    { label: 'Cita carga', value: row['cita carga'] },
+    { label: 'Llegada carga', value: row['llegada carga'] },
+    { label: 'Cita entrega', value: row['cita entrega'] },
+    { label: 'Llegada entrega', value: row['llegada entrega'] },
+    { label: 'Comentarios', value: row.comentarios }
+  ];
+
+  return `
+    <dl class="trip-details">
+      ${fields
+        .map((field) => {
+          const value = field.value || '-';
+          return `
+            <div class="trip-details-row">
+              <dt>${field.label}</dt>
+              <dd>${value}</dd>
+            </div>
+          `;
+        })
+        .join('')}
+    </dl>
+  `;
 }
 
 // Filtra la data en memoria usando un query simple.
