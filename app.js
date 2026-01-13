@@ -813,7 +813,10 @@ function buildTripDetails(row) {
     <dl class="trip-details">
       ${fields
         .map((field) => {
-          const value = field.value || '-';
+          const value =
+            field.label === 'Tracking'
+              ? buildTrackingLink(field.value)
+              : field.value || '-';
           return `
             <div class="trip-details-row">
               <dt>${field.label}</dt>
@@ -824,6 +827,41 @@ function buildTripDetails(row) {
         .join('')}
     </dl>
   `;
+}
+
+function buildTrackingLink(value) {
+  if (!value) {
+    return '-';
+  }
+
+  if (isValidUrl(value)) {
+    const safeUrl = escapeHtml(value);
+    return `<a class="tracking-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeUrl}</a>`;
+  }
+
+  return value;
+}
+
+function isValidUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (error) {
+    return false;
+  }
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => {
+    const escaped = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    };
+    return escaped[char] || char;
+  });
 }
 
 function buildTripEditForm(row) {
