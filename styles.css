@@ -512,6 +512,11 @@ textarea:focus-visible,
   color: var(--text-muted);
 }
 
+.tracking-link {
+  color: var(--primary);
+  word-break: break-all;
+}
+
 .add-record-form {
   display: grid;
   gap: 16px;
