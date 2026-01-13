@@ -7,6 +7,7 @@
 const ALL_VIEW = 'all';
 const DAILY_VIEW = 'daily';
 const TODAY_DELIVERIES_VIEW = 'today-deliveries';
+const WEEKLY_PROGRAM_VIEW = 'weekly-program';
 const DEFAULT_VIEW = DAILY_VIEW;
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
 const BASE_STATUS_FILTERS = ['all', 'delivered', 'drop', 'cancelled'];
@@ -149,6 +150,9 @@ function buildLayout() {
                   </button>
                   <button type="button" class="side-menu-button" data-view="${TODAY_DELIVERIES_VIEW}">
                     Entregas hoy
+                  </button>
+                  <button type="button" class="side-menu-button" data-view="${WEEKLY_PROGRAM_VIEW}">
+                    Programa semanal
                   </button>
                 </div>
               </div>
@@ -673,7 +677,9 @@ function renderTableHeader(columns) {
 }
 
 function getTableColumns() {
-  return state.view === DAILY_VIEW ? DAILY_TABLE_COLUMNS : DEFAULT_TABLE_COLUMNS;
+  return state.view === DAILY_VIEW || state.view === WEEKLY_PROGRAM_VIEW
+    ? DAILY_TABLE_COLUMNS
+    : DEFAULT_TABLE_COLUMNS;
 }
 
 function renderTripCell(tripValue, index) {
@@ -1416,6 +1422,26 @@ function shouldIncludeInTodayDeliveries(row, today) {
   return status !== 'delivered' && status !== 'cancelled';
 }
 
+function getMexicoWeekRange(date) {
+  const { year, month, day } = getMexicoDateParts(date);
+  const utcDate = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = utcDate.getUTCDay();
+  const startDate = new Date(Date.UTC(year, month - 1, day - dayOfWeek, 12));
+  const endDate = new Date(Date.UTC(year, month - 1, day - dayOfWeek + 6, 12));
+  return { startDate, endDate };
+}
+
+function shouldIncludeInWeeklyProgram(row, weekRange) {
+  if (!row.citaCargaDate) {
+    return false;
+  }
+
+  const startsAfterOrSame =
+    compareMexicoDates(row.citaCargaDate, weekRange.startDate) >= 0;
+  const endsBeforeOrSame = compareMexicoDates(row.citaCargaDate, weekRange.endDate) <= 0;
+  return startsAfterOrSame && endsBeforeOrSame;
+}
+
 // Filtra la data en memoria usando un query simple.
 function applyFilters() {
   const today = new Date();
@@ -1424,6 +1450,9 @@ function applyFilters() {
     baseData = state.data.filter((row) => shouldIncludeInDailyLoads(row, today));
   } else if (state.view === TODAY_DELIVERIES_VIEW) {
     baseData = state.data.filter((row) => shouldIncludeInTodayDeliveries(row, today));
+  } else if (state.view === WEEKLY_PROGRAM_VIEW) {
+    const weekRange = getMexicoWeekRange(today);
+    baseData = state.data.filter((row) => shouldIncludeInWeeklyProgram(row, weekRange));
   }
 
   renderStatusFilters(baseData);
