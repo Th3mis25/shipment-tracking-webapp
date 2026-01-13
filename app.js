@@ -74,6 +74,8 @@ const state = {
 const dom = {
   app: document.getElementById('app'),
   searchInput: null,
+  searchToggle: null,
+  searchField: null,
   tableBody: null,
   tableHead: null,
   tableWrapper: null,
@@ -150,14 +152,24 @@ function buildLayout() {
                   </button>
                 </div>
               </div>
-              <div class="search-group">
-                <label for="search" class="search-label">Buscar embarque</label>
-                <input
-                  id="search"
-                  type="search"
-                  placeholder="Buscar por referencia, cliente, destino..."
-                  autocomplete="off"
-                />
+              <div class="search-group is-collapsed">
+                <button
+                  type="button"
+                  class="search-toggle"
+                  aria-label="Buscar embarque"
+                  aria-expanded="false"
+                >
+                  🔍
+                </button>
+                <div class="search-field" hidden>
+                  <label for="search" class="search-label">Buscar embarque</label>
+                  <input
+                    id="search"
+                    type="search"
+                    placeholder="Buscar por referencia, cliente, destino..."
+                    autocomplete="off"
+                  />
+                </div>
               </div>
             </div>
             <button
@@ -212,6 +224,8 @@ function buildLayout() {
   `;
 
   dom.searchInput = dom.app.querySelector('#search');
+  dom.searchToggle = dom.app.querySelector('.search-toggle');
+  dom.searchField = dom.app.querySelector('.search-field');
   dom.tableBody = dom.app.querySelector('tbody');
   dom.tableHead = dom.app.querySelector('.tracking-table thead');
   dom.tableWrapper = dom.app.querySelector('.table-wrapper');
@@ -235,6 +249,7 @@ function buildLayout() {
 
   updateMenuActiveState();
   setMenuOpen(false);
+  setSearchOpen(false);
   updateStatusOptions();
   renderStatusFilters([]);
 }
@@ -249,6 +264,14 @@ function bindEvents() {
   dom.menuToggle.addEventListener('click', () => {
     const isOpen = dom.menuToggle.getAttribute('aria-expanded') === 'true';
     setMenuOpen(!isOpen);
+  });
+
+  dom.searchToggle.addEventListener('click', () => {
+    const isOpen = dom.searchToggle.getAttribute('aria-expanded') === 'true';
+    setSearchOpen(!isOpen);
+    if (!isOpen) {
+      dom.searchInput.focus();
+    }
   });
 
   dom.searchInput.addEventListener('input', (event) => {
@@ -389,6 +412,12 @@ function bindEvents() {
 function setMenuOpen(isOpen) {
   dom.menuToggle.setAttribute('aria-expanded', String(isOpen));
   dom.menuContent.hidden = !isOpen;
+}
+
+function setSearchOpen(isOpen) {
+  dom.searchToggle.setAttribute('aria-expanded', String(isOpen));
+  dom.searchField.hidden = !isOpen;
+  dom.searchToggle.closest('.search-group').classList.toggle('is-collapsed', !isOpen);
 }
 
 // Obtiene datos desde Google Apps Script.
