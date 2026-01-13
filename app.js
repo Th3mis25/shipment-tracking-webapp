@@ -1414,7 +1414,15 @@ function applyFilters() {
         row.cliente,
         row.destino,
         row.estado,
-        row.tracking
+        row.ejecutivo,
+        row.trip,
+        row.caja,
+        row.segmento,
+        row['tr-mx'],
+        row['tr-usa'],
+        row.tracking,
+        row.docs,
+        row.comentarios
       ]
         .filter(Boolean)
         .some((value) => value.toString().toLowerCase().includes(normalizedQuery));
