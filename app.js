@@ -1384,6 +1384,20 @@ function applyFilters() {
   }
 
   state.filtered = [...filteredData];
+  state.filtered.sort((a, b) => {
+    const dateA = a.citaCargaDate;
+    const dateB = b.citaCargaDate;
+    if (!dateA && !dateB) {
+      return 0;
+    }
+    if (!dateA) {
+      return 1;
+    }
+    if (!dateB) {
+      return -1;
+    }
+    return dateA - dateB;
+  });
   renderTable(state.filtered);
   renderCards(state.filtered);
   updateEmptyState(state.filtered);
