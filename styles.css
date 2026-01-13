@@ -3,9 +3,6 @@ body { font-family: Arial, sans-serif; margin: 0; padding: 16px; }
 h1 { margin: 0 0 16px; }
 
 .app-layout {
-  align-items: flex-start;
-  display: flex;
-  gap: 24px;
   width: 100%;
 }
 
@@ -13,6 +10,7 @@ h1 { margin: 0 0 16px; }
   display: grid;
   gap: 10px;
   position: relative;
+  width: fit-content;
 }
 
 .side-menu-toggle {
@@ -36,10 +34,10 @@ h1 { margin: 0 0 16px; }
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
   display: grid;
   gap: 10px;
-  left: 16px;
+  left: 0;
   padding: 12px;
   position: absolute;
-  top: 64px;
+  top: 52px;
   width: min(220px, 80vw);
   z-index: 5;
 }
@@ -79,6 +77,11 @@ h1 { margin: 0 0 16px; }
   flex-wrap: wrap;
   gap: 16px;
   justify-content: space-between;
+}
+
+.toolbar-main {
+  display: grid;
+  gap: 12px;
 }
 
 .search-group {
@@ -302,10 +305,6 @@ h1 { margin: 0 0 16px; }
 
 @media (max-width: 720px) {
   body { padding: 12px; }
-
-  .app-layout {
-    flex-direction: column;
-  }
 
   .side-menu {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

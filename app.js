@@ -117,37 +117,39 @@ document.addEventListener('DOMContentLoaded', () => {
 function buildLayout() {
   dom.app.innerHTML = `
     <div class="app-layout">
-      <aside class="side-menu" aria-label="Menú de navegación">
-        <button
-          type="button"
-          class="side-menu-toggle"
-          aria-label="Mostrar u ocultar menú"
-          aria-expanded="false"
-        >
-          ☰
-        </button>
-        <div class="side-menu-content" hidden>
-          <button type="button" class="side-menu-button" data-view="${ALL_VIEW}">
-            Todas
-          </button>
-          <button type="button" class="side-menu-button" data-view="${DAILY_VIEW}">
-            Cargas diarias
-          </button>
-          <button type="button" class="side-menu-button" data-view="${TODAY_DELIVERIES_VIEW}">
-            Entregas hoy
-          </button>
-        </div>
-      </aside>
       <section class="app-section">
         <div class="toolbar">
-          <div class="search-group">
-            <label for="search" class="search-label">Buscar embarque</label>
-            <input
-              id="search"
-              type="search"
-              placeholder="Buscar por referencia, cliente, destino..."
-              autocomplete="off"
-            />
+          <div class="toolbar-main">
+            <div class="side-menu" aria-label="Menú de navegación">
+              <button
+                type="button"
+                class="side-menu-toggle"
+                aria-label="Mostrar u ocultar menú"
+                aria-expanded="false"
+              >
+                ☰
+              </button>
+              <div class="side-menu-content" hidden>
+                <button type="button" class="side-menu-button" data-view="${ALL_VIEW}">
+                  Todas
+                </button>
+                <button type="button" class="side-menu-button" data-view="${DAILY_VIEW}">
+                  Cargas diarias
+                </button>
+                <button type="button" class="side-menu-button" data-view="${TODAY_DELIVERIES_VIEW}">
+                  Entregas hoy
+                </button>
+              </div>
+            </div>
+            <div class="search-group">
+              <label for="search" class="search-label">Buscar embarque</label>
+              <input
+                id="search"
+                type="search"
+                placeholder="Buscar por referencia, cliente, destino..."
+                autocomplete="off"
+              />
+            </div>
           </div>
           <button
             type="button"
