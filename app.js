@@ -9,6 +9,7 @@ const DAILY_VIEW = 'daily';
 const TODAY_DELIVERIES_VIEW = 'today-deliveries';
 const DEFAULT_VIEW = DAILY_VIEW;
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
+const BASE_STATUS_FILTERS = ['all', 'delivered', 'drop', 'cancelled'];
 const ALLOWED_OVERDUE_STATUSES = new Set([
   'drop',
   'live',
@@ -24,7 +25,8 @@ const DEFAULT_TABLE_COLUMNS = [
   { key: 'trip', label: 'Trip' },
   { key: 'caja', label: 'Caja' },
   { key: 'tr-mx', label: 'TR-MX' },
-  { key: 'tr-usa', label: 'TR-USA' }
+  { key: 'tr-usa', label: 'TR-USA' },
+  { key: 'actions', label: 'Acciones' }
 ];
 const DAILY_TABLE_COLUMNS = [
   { key: 'cliente', label: 'Cliente' },
@@ -32,7 +34,8 @@ const DAILY_TABLE_COLUMNS = [
   { key: 'trip', label: 'Trip' },
   { key: 'caja', label: 'Caja' },
   { key: 'tr-mx', label: 'TR-MX' },
-  { key: 'cita carga', label: 'Cita carga' }
+  { key: 'cita carga', label: 'Cita carga' },
+  { key: 'actions', label: 'Acciones' }
 ];
 const ADD_RECORD_FIELDS = [
   { key: 'referencia', label: 'Referencia' },
@@ -59,6 +62,8 @@ const state = {
   data: [],
   filtered: [],
   query: '',
+  statusFilter: 'all',
+  statusOptions: [],
   view: DEFAULT_VIEW,
   error: null,
   activeTripRow: null,
@@ -71,6 +76,9 @@ const dom = {
   searchInput: null,
   tableBody: null,
   tableHead: null,
+  tableWrapper: null,
+  cardList: null,
+  filterContainer: null,
   emptyState: null,
   menuButtons: null,
   menuToggle: null,
@@ -119,63 +127,60 @@ function buildLayout() {
     <div class="app-layout">
       <section class="app-section">
         <div class="toolbar">
-          <div class="toolbar-main">
-            <div class="side-menu" aria-label="Menú de navegación">
-              <button
-                type="button"
-                class="side-menu-toggle"
-                aria-label="Mostrar u ocultar menú"
-                aria-expanded="false"
-              >
-                ☰
-              </button>
-              <div class="side-menu-content" hidden>
-                <button type="button" class="side-menu-button" data-view="${ALL_VIEW}">
-                  Todas
+          <div class="toolbar-top">
+            <div class="toolbar-main">
+              <div class="side-menu" aria-label="Menú de navegación">
+                <button
+                  type="button"
+                  class="side-menu-toggle"
+                  aria-label="Mostrar u ocultar menú"
+                  aria-expanded="false"
+                >
+                  ☰
                 </button>
-                <button type="button" class="side-menu-button" data-view="${DAILY_VIEW}">
-                  Cargas diarias
-                </button>
-                <button type="button" class="side-menu-button" data-view="${TODAY_DELIVERIES_VIEW}">
-                  Entregas hoy
-                </button>
+                <div class="side-menu-content" hidden>
+                  <button type="button" class="side-menu-button" data-view="${ALL_VIEW}">
+                    Todas
+                  </button>
+                  <button type="button" class="side-menu-button" data-view="${DAILY_VIEW}">
+                    Cargas diarias
+                  </button>
+                  <button type="button" class="side-menu-button" data-view="${TODAY_DELIVERIES_VIEW}">
+                    Entregas hoy
+                  </button>
+                </div>
+              </div>
+              <div class="search-group">
+                <label for="search" class="search-label">Buscar embarque</label>
+                <input
+                  id="search"
+                  type="search"
+                  placeholder="Buscar por referencia, cliente, destino..."
+                  autocomplete="off"
+                />
               </div>
             </div>
-            <div class="search-group">
-              <label for="search" class="search-label">Buscar embarque</label>
-              <input
-                id="search"
-                type="search"
-                placeholder="Buscar por referencia, cliente, destino..."
-                autocomplete="off"
-              />
-            </div>
+            <button
+              type="button"
+              class="primary-button"
+              id="add-record-button"
+              aria-label="Agregar registro"
+              title="Agregar registro"
+            >
+              +
+            </button>
           </div>
-          <button
-            type="button"
-            class="primary-button"
-            id="add-record-button"
-            aria-label="Agregar registro"
-            title="Agregar registro"
-          >
-            +
-          </button>
+          <div class="filter-chips" role="list"></div>
         </div>
         <div class="table-wrapper">
-          <table class="tracking-table">
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Estado</th>
-                <th>Trip</th>
-                <th>Caja</th>
-                <th>TR-MX</th>
-                <th>TR-USA</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+          <div class="table-scroll" role="region" aria-label="Tabla de tracking">
+            <table class="tracking-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
+        <div class="card-list" role="list"></div>
         <p class="empty-state" hidden>${DEFAULT_EMPTY_MESSAGE}</p>
       </section>
     </div>
@@ -209,6 +214,9 @@ function buildLayout() {
   dom.searchInput = dom.app.querySelector('#search');
   dom.tableBody = dom.app.querySelector('tbody');
   dom.tableHead = dom.app.querySelector('.tracking-table thead');
+  dom.tableWrapper = dom.app.querySelector('.table-wrapper');
+  dom.cardList = dom.app.querySelector('.card-list');
+  dom.filterContainer = dom.app.querySelector('.filter-chips');
   dom.emptyState = dom.app.querySelector('.empty-state');
   dom.menuButtons = dom.app.querySelectorAll('.side-menu-button');
   dom.menuToggle = dom.app.querySelector('.side-menu-toggle');
@@ -227,18 +235,24 @@ function buildLayout() {
 
   updateMenuActiveState();
   setMenuOpen(false);
+  updateStatusOptions();
+  renderStatusFilters([]);
 }
 
 // Enlaza eventos de interacción básicos.
 function bindEvents() {
+  const debouncedSearch = debounce((value) => {
+    state.query = value.trim();
+    applyFilters();
+  }, 250);
+
   dom.menuToggle.addEventListener('click', () => {
     const isOpen = dom.menuToggle.getAttribute('aria-expanded') === 'true';
     setMenuOpen(!isOpen);
   });
 
   dom.searchInput.addEventListener('input', (event) => {
-    state.query = event.target.value.trim();
-    applyFilters(state.query);
+    debouncedSearch(event.target.value);
   });
 
   dom.addRecordButton.addEventListener('click', () => {
@@ -256,9 +270,26 @@ function bindEvents() {
     setMenuOpen(false);
   });
 
+  dom.filterContainer.addEventListener('click', (event) => {
+    const chip = event.target.closest('.filter-chip');
+    if (!chip) {
+      return;
+    }
+    setStatusFilter(chip.dataset.status || 'all');
+  });
+
   dom.tableBody.addEventListener('click', (event) => {
     const target = event.target.closest('.trip-link');
     if (!target) {
+      const viewButton = event.target.closest('.row-view');
+      if (!viewButton) {
+        return;
+      }
+      const rowIndex = Number(viewButton.dataset.rowIndex);
+      const row = state.filtered[rowIndex];
+      if (row) {
+        openTripModal(row);
+      }
       return;
     }
 
@@ -268,6 +299,19 @@ function bindEvents() {
       return;
     }
 
+    openTripModal(row);
+  });
+
+  dom.cardList.addEventListener('click', (event) => {
+    const viewButton = event.target.closest('.card-view-button');
+    if (!viewButton) {
+      return;
+    }
+    const rowIndex = Number(viewButton.dataset.rowIndex);
+    const row = state.filtered[rowIndex];
+    if (!row) {
+      return;
+    }
     openTripModal(row);
   });
 
@@ -354,6 +398,8 @@ async function fetchData() {
     state.error = 'Configura CONFIG.API_URL en config.js para conectar el backend.';
     console.warn(state.error);
     renderTable([]);
+    renderCards([]);
+    updateEmptyState([]);
     return;
   }
 
@@ -371,7 +417,8 @@ async function fetchData() {
     const data = normalizePayload(payload);
     state.error = null;
     state.data = data;
-    applyFilters(state.query);
+    updateStatusOptions();
+    applyFilters();
   } catch (error) {
     state.error =
       'No se pudieron cargar los registros. Revisa permisos y acceso del backend.';
@@ -380,6 +427,8 @@ async function fetchData() {
     }
     console.error('Error al obtener datos:', error);
     renderTable([]);
+    renderCards([]);
+    updateEmptyState([]);
   }
 }
 
@@ -563,6 +612,12 @@ function renderTable(data) {
           if (column.key === 'trip') {
             return `<td>${renderTripCell(row.trip, index)}</td>`;
           }
+          if (column.key === 'estado') {
+            return `<td>${renderStatusChip(row.estado)}</td>`;
+          }
+          if (column.key === 'actions') {
+            return `<td>${renderRowActions(index)}</td>`;
+          }
           const value = row[column.key];
           return `<td>${value || '-'}</td>`;
         })
@@ -574,9 +629,6 @@ function renderTable(data) {
       `;
     })
     .join('');
-
-  dom.emptyState.textContent = state.error || DEFAULT_EMPTY_MESSAGE;
-  dom.emptyState.hidden = data.length > 0;
 }
 
 function renderTableHeader(columns) {
@@ -601,10 +653,100 @@ function renderTripCell(tripValue, index) {
   }
 
   return `
-    <button type="button" class="trip-link" data-row-index="${index}">
+    <button type="button" class="trip-link" data-row-index="${index}" aria-label="Ver detalle del trip">
       ${tripValue}
     </button>
   `;
+}
+
+function renderRowActions(index) {
+  return `
+    <div class="row-actions">
+      <button type="button" class="row-view" data-row-index="${index}" aria-label="Ver o editar registro">
+        Ver/Editar
+      </button>
+      <button type="button" class="row-menu" aria-label="Más acciones">
+        ⋯
+      </button>
+    </div>
+  `;
+}
+
+function renderStatusChip(statusValue) {
+  const label = statusValue || 'Sin estado';
+  const statusKey = normalizeStatusKey(statusValue);
+  const statusClass = `is-${statusKey}`;
+  return `
+    <span class="status-chip ${statusClass}">
+      ${label}
+    </span>
+  `;
+}
+
+function normalizeStatusKey(statusValue) {
+  if (!statusValue) {
+    return 'default';
+  }
+  const normalized = statusValue.toString().trim().toLowerCase();
+  if (!normalized) {
+    return 'default';
+  }
+  if (normalized.includes('delivered')) {
+    return 'delivered';
+  }
+  if (normalized.includes('drop')) {
+    return 'drop';
+  }
+  if (normalized.includes('cancel')) {
+    return 'cancelled';
+  }
+  if (normalized.includes('live')) {
+    return 'live';
+  }
+  if (normalized.includes('transit')) {
+    return 'in-transit';
+  }
+  return 'default';
+}
+
+function renderCards(data) {
+  if (!dom.cardList) {
+    return;
+  }
+
+  dom.cardList.innerHTML = data
+    .map((row, index) => {
+      const trMx = row['tr-mx'];
+      const trUsa = row['tr-usa'];
+      return `
+        <article class="card" role="listitem">
+          <header class="card-header">
+            <div>
+              <p class="card-title">${row.cliente || 'Cliente sin nombre'}</p>
+              <p>${row.trip ? `Trip ${row.trip}` : 'Trip no asignado'}</p>
+            </div>
+            ${renderStatusChip(row.estado)}
+          </header>
+          <div class="card-details">
+            <div><strong>Caja:</strong> ${row.caja || '-'}</div>
+            <div><strong>Trip:</strong> ${row.trip || '-'}</div>
+            ${trMx ? `<div><strong>TR-MX:</strong> ${trMx}</div>` : ''}
+            ${trUsa ? `<div><strong>TR-USA:</strong> ${trUsa}</div>` : ''}
+          </div>
+          <div class="card-actions">
+            <button type="button" class="primary-button card-view-button" data-row-index="${index}" aria-label="Ver detalle">
+              Ver
+            </button>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+function updateEmptyState(data) {
+  dom.emptyState.textContent = state.error || DEFAULT_EMPTY_MESSAGE;
+  dom.emptyState.hidden = data.length > 0;
 }
 
 function openTripModal(row) {
@@ -864,7 +1006,8 @@ async function handleTripEditSubmit(event) {
 
     const normalizedRecord = normalizeObjectRow(record);
     Object.assign(state.activeTripRow, normalizedRecord);
-    applyFilters(state.query);
+    updateStatusOptions();
+    applyFilters();
     exitTripEditMode();
   } catch (error) {
     const message =
@@ -989,7 +1132,8 @@ async function handleAddRecordSubmit(event) {
 
     const normalizedRecord = normalizeObjectRow(record);
     state.data = [normalizedRecord, ...state.data];
-    applyFilters(state.query);
+    updateStatusOptions();
+    applyFilters();
     closeAddRecordModal();
   } catch (error) {
     const message =
@@ -1010,7 +1154,7 @@ function setView(view) {
   state.view = view;
   updateMenuActiveState();
   setMenuOpen(false);
-  applyFilters(state.query);
+  applyFilters();
 }
 
 function updateMenuActiveState() {
@@ -1023,6 +1167,120 @@ function updateMenuActiveState() {
     button.classList.toggle('is-active', isActive);
     button.setAttribute('aria-pressed', isActive.toString());
   });
+}
+
+function updateStatusOptions() {
+  const statusMap = new Map();
+  state.data.forEach((row) => {
+    const rawStatus = row.estado ? row.estado.toString().trim() : '';
+    if (!rawStatus) {
+      return;
+    }
+    const key = rawStatus.toLowerCase();
+    if (!statusMap.has(key)) {
+      statusMap.set(key, rawStatus);
+    }
+  });
+
+  const options = [{ key: 'all', label: 'All' }];
+  BASE_STATUS_FILTERS.filter((key) => key !== 'all').forEach((key) => {
+    const label = statusMap.get(key) || formatStatusLabel(key);
+    options.push({ key, label });
+  });
+
+  const extraOptions = Array.from(statusMap.entries())
+    .filter(([key]) => !BASE_STATUS_FILTERS.includes(key))
+    .sort((a, b) => a[1].localeCompare(b[1], 'es', { sensitivity: 'base' }))
+    .map(([key, label]) => ({ key, label }));
+
+  state.statusOptions = [...options, ...extraOptions];
+
+  const availableKeys = new Set(state.statusOptions.map((option) => option.key));
+  if (!availableKeys.has(state.statusFilter)) {
+    state.statusFilter = 'all';
+  }
+}
+
+function renderStatusFilters(data) {
+  if (!dom.filterContainer) {
+    return;
+  }
+  dom.filterContainer.innerHTML = state.statusOptions
+    .map((option) => {
+      const count = option.key === 'all' ? data.length : countStatus(data, option.key);
+      const isActive = option.key === state.statusFilter;
+      return `
+        <button
+          type="button"
+          class="filter-chip ${isActive ? 'is-active' : ''}"
+          data-status="${option.key}"
+          aria-pressed="${isActive}"
+        >
+          ${option.label}
+          <span class="chip-count">${count}</span>
+        </button>
+      `;
+    })
+    .join('');
+}
+
+function countStatus(data, statusKey) {
+  return data.reduce((accumulator, row) => {
+    if (matchesStatusFilter(row, statusKey)) {
+      return accumulator + 1;
+    }
+    return accumulator;
+  }, 0);
+}
+
+function setStatusFilter(statusKey) {
+  if (state.statusFilter === statusKey) {
+    return;
+  }
+  state.statusFilter = statusKey;
+  applyFilters();
+}
+
+function matchesStatusFilter(row, statusKey) {
+  const statusValue = getRowStatusValue(row);
+  if (!statusValue) {
+    return false;
+  }
+  if (BASE_STATUS_FILTERS.includes(statusKey)) {
+    return statusValue.includes(statusKey);
+  }
+  return statusValue === statusKey;
+}
+
+function getRowStatusValue(row) {
+  return row.estado ? row.estado.toString().trim().toLowerCase() : '';
+}
+
+function formatStatusLabel(statusKey) {
+  const labelMap = {
+    delivered: 'Delivered',
+    drop: 'Drop',
+    cancelled: 'Cancelled'
+  };
+  if (labelMap[statusKey]) {
+    return labelMap[statusKey];
+  }
+  return statusKey
+    .split(/[-\s]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function debounce(callback, delay) {
+  let timeoutId = null;
+  return (...args) => {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
+    timeoutId = window.setTimeout(() => {
+      callback(...args);
+    }, delay);
+  };
 }
 
 function getMexicoDateParts(date) {
@@ -1092,7 +1350,7 @@ function shouldIncludeInTodayDeliveries(row, today) {
 }
 
 // Filtra la data en memoria usando un query simple.
-function applyFilters(query) {
+function applyFilters() {
   const today = new Date();
   let baseData = state.data;
   if (state.view === DAILY_VIEW) {
@@ -1101,24 +1359,32 @@ function applyFilters(query) {
     baseData = state.data.filter((row) => shouldIncludeInTodayDeliveries(row, today));
   }
 
-  if (!query) {
-    state.filtered = [...baseData];
-    renderTable(state.filtered);
-    return;
+  renderStatusFilters(baseData);
+
+  let filteredData = baseData;
+  if (state.statusFilter !== 'all') {
+    filteredData = filteredData.filter((row) =>
+      matchesStatusFilter(row, state.statusFilter)
+    );
   }
 
-  const normalizedQuery = query.toLowerCase();
-  state.filtered = baseData.filter((row) => {
-    return [
-      row.referencia,
-      row.cliente,
-      row.destino,
-      row.estado,
-      row.tracking
-    ]
-      .filter(Boolean)
-      .some((value) => value.toString().toLowerCase().includes(normalizedQuery));
-  });
+  if (state.query) {
+    const normalizedQuery = state.query.toLowerCase();
+    filteredData = filteredData.filter((row) => {
+      return [
+        row.referencia,
+        row.cliente,
+        row.destino,
+        row.estado,
+        row.tracking
+      ]
+        .filter(Boolean)
+        .some((value) => value.toString().toLowerCase().includes(normalizedQuery));
+    });
+  }
 
+  state.filtered = [...filteredData];
   renderTable(state.filtered);
+  renderCards(state.filtered);
+  updateEmptyState(state.filtered);
 }
