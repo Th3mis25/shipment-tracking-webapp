@@ -10,6 +10,9 @@ const TODAY_DELIVERIES_VIEW = 'today-deliveries';
 const WEEKLY_PROGRAM_VIEW = 'weekly-program';
 const DEFAULT_VIEW = DAILY_VIEW;
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
+const THEME_STORAGE_KEY = 'tracking-theme';
+const THEME_DARK = 'dark';
+const THEME_LIGHT = 'light';
 const BASE_STATUS_FILTERS = ['all', 'delivered', 'drop', 'cancelled'];
 const ALLOWED_OVERDUE_STATUSES = new Set([
   'drop',
@@ -74,6 +77,7 @@ const state = {
 // Referencias a elementos principales del DOM.
 const dom = {
   app: document.getElementById('app'),
+  themeToggle: document.getElementById('theme-toggle'),
   searchInput: null,
   searchToggle: null,
   searchField: null,
@@ -119,6 +123,7 @@ const TRIP_EDIT_FIELDS = [
 
 // Punto de entrada de la app.
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   buildLayout();
   bindEvents();
   fetchData();
@@ -264,6 +269,16 @@ function bindEvents() {
     state.query = value.trim();
     applyFilters();
   }, 250);
+
+  if (dom.themeToggle) {
+    dom.themeToggle.addEventListener('click', () => {
+      const nextTheme = document.body.classList.contains('theme-dark')
+        ? THEME_LIGHT
+        : THEME_DARK;
+      applyTheme(nextTheme);
+      localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    });
+  }
 
   dom.menuToggle.addEventListener('click', () => {
     const isOpen = dom.menuToggle.getAttribute('aria-expanded') === 'true';
@@ -411,6 +426,44 @@ function bindEvents() {
     }
     setMenuOpen(false);
   });
+}
+
+function initTheme() {
+  const storedTheme = getStoredTheme();
+  const initialTheme = storedTheme || getSystemTheme();
+  applyTheme(initialTheme);
+}
+
+function getStoredTheme() {
+  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+  if (stored === THEME_DARK || stored === THEME_LIGHT) {
+    return stored;
+  }
+  return null;
+}
+
+function getSystemTheme() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? THEME_DARK
+    : THEME_LIGHT;
+}
+
+function applyTheme(theme) {
+  document.body.classList.toggle('theme-dark', theme === THEME_DARK);
+  if (!dom.themeToggle) {
+    return;
+  }
+
+  const isDark = theme === THEME_DARK;
+  dom.themeToggle.setAttribute('aria-pressed', String(isDark));
+  const label = dom.themeToggle.querySelector('.theme-toggle-text');
+  if (label) {
+    label.textContent = isDark ? 'Modo claro' : 'Modo oscuro';
+  }
+  const icon = dom.themeToggle.querySelector('.theme-toggle-icon');
+  if (icon) {
+    icon.textContent = isDark ? '☀️' : '🌙';
+  }
 }
 
 function setMenuOpen(isOpen) {
