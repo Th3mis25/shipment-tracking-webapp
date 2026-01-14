@@ -809,22 +809,22 @@ function renderCards(data) {
       return `
         <article class="card" role="listitem">
           <header class="card-header">
-            <div>
+            <div class="card-title-group">
               <p class="card-title">${row.cliente || 'Cliente sin nombre'}</p>
               <p>${row.trip ? `Trip ${row.trip}` : 'Trip no asignado'}</p>
             </div>
-            ${renderStatusChip(row.estado)}
+            <div class="card-header-actions">
+              ${renderStatusChip(row.estado)}
+              <button type="button" class="primary-button card-view-button" data-row-index="${index}" aria-label="Ver detalle">
+                Ver
+              </button>
+            </div>
           </header>
           <div class="card-details">
             <div><strong>Caja:</strong> ${row.caja || '-'}</div>
             <div><strong>Trip:</strong> ${row.trip || '-'}</div>
             ${trMx ? `<div><strong>TR-MX:</strong> ${trMx}</div>` : ''}
             ${trUsa ? `<div><strong>TR-USA:</strong> ${trUsa}</div>` : ''}
-          </div>
-          <div class="card-actions">
-            <button type="button" class="primary-button card-view-button" data-row-index="${index}" aria-label="Ver detalle">
-              Ver
-            </button>
           </div>
         </article>
       `;
