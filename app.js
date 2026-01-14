@@ -1334,6 +1334,9 @@ function renderStatusFilters(data) {
   dom.filterContainer.innerHTML = state.statusOptions
     .map((option) => {
       const count = option.key === 'all' ? data.length : countStatus(data, option.key);
+      if (option.key !== 'all' && count === 0) {
+        return '';
+      }
       const isActive = option.key === state.statusFilter;
       return `
         <button
@@ -1508,18 +1511,10 @@ function applyFilters() {
     baseData = state.data.filter((row) => shouldIncludeInWeeklyProgram(row, weekRange));
   }
 
-  renderStatusFilters(baseData);
-
-  let filteredData = baseData;
-  if (state.statusFilter !== 'all') {
-    filteredData = filteredData.filter((row) =>
-      matchesStatusFilter(row, state.statusFilter)
-    );
-  }
-
+  let searchableData = baseData;
   if (state.query) {
     const normalizedQuery = state.query.toLowerCase();
-    filteredData = filteredData.filter((row) => {
+    searchableData = searchableData.filter((row) => {
       return [
         row.referencia,
         row.cliente,
@@ -1538,6 +1533,23 @@ function applyFilters() {
         .filter(Boolean)
         .some((value) => value.toString().toLowerCase().includes(normalizedQuery));
     });
+  }
+
+  const activeFilterCount =
+    state.statusFilter === 'all'
+      ? searchableData.length
+      : countStatus(searchableData, state.statusFilter);
+  if (state.statusFilter !== 'all' && activeFilterCount === 0) {
+    state.statusFilter = 'all';
+  }
+
+  renderStatusFilters(searchableData);
+
+  let filteredData = searchableData;
+  if (state.statusFilter !== 'all') {
+    filteredData = searchableData.filter((row) =>
+      matchesStatusFilter(row, state.statusFilter)
+    );
   }
 
   state.filtered = [...filteredData];
