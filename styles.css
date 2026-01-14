@@ -179,7 +179,9 @@ textarea:focus-visible,
 }
 
 .toolbar-main {
-  display: grid;
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -243,6 +245,7 @@ textarea:focus-visible,
 .search-group {
   align-items: center;
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
