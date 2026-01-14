@@ -126,12 +126,25 @@ textarea:focus-visible,
   cursor: pointer;
   display: inline-flex;
   font: inherit;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: 0;
+  padding: 8px 10px;
+  position: relative;
 }
 
 .theme-toggle-icon {
   font-size: 18px;
+}
+
+.theme-toggle-text {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
 #app {
@@ -674,6 +687,21 @@ textarea:focus-visible,
   .app-shell {
     flex-direction: column;
     gap: 10px;
+    position: relative;
+  }
+
+  .app-shell-title {
+    padding-right: 44px;
+  }
+
+  .app-shell-actions {
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+
+  .theme-toggle {
+    padding: 6px;
   }
 
   .toolbar-top {
