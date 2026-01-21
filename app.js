@@ -101,7 +101,8 @@ const state = {
   kpiEndDate: null,
   error: null,
   activeTripRow: null,
-  isEditingTrip: false
+  isEditingTrip: false,
+  controlTowerAlerts: []
 };
 
 // Referencias a elementos principales del DOM.
@@ -630,6 +631,36 @@ function bindEvents() {
     }
     openTripModal(row);
   });
+
+  if (dom.controlTowerAlerts) {
+    dom.controlTowerAlerts.addEventListener('click', (event) => {
+      const alertCard = event.target.closest('[data-alert-index]');
+      if (!alertCard) {
+        return;
+      }
+      const alertIndex = Number(alertCard.dataset.alertIndex);
+      const alert = state.controlTowerAlerts[alertIndex];
+      if (alert && alert.row) {
+        openTripModal(alert.row);
+      }
+    });
+
+    dom.controlTowerAlerts.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+      const alertCard = event.target.closest('[data-alert-index]');
+      if (!alertCard) {
+        return;
+      }
+      event.preventDefault();
+      const alertIndex = Number(alertCard.dataset.alertIndex);
+      const alert = state.controlTowerAlerts[alertIndex];
+      if (alert && alert.row) {
+        openTripModal(alert.row);
+      }
+    });
+  }
 
   dom.tripModal.addEventListener('click', (event) => {
     if (event.target === dom.tripModal || event.target.closest('.modal-close')) {
@@ -1926,6 +1957,7 @@ function renderControlTower() {
   }
 
   const metrics = calculateControlTowerMetrics();
+  state.controlTowerAlerts = metrics.alerts;
   if (dom.controlTowerValues.activeShipments) {
     dom.controlTowerValues.activeShipments.textContent = metrics.activeCount.toString();
   }
@@ -2036,6 +2068,7 @@ function createControlTowerAlert(row, { citaKey, llegadaKey, citaLabel, now }) {
 
   const alertType = CONTROL_TOWER_ALERT_TYPES[typeKey];
   return {
+    row,
     typeKey,
     typeLabel: alertType.label,
     priority: alertType.priority,
@@ -2056,9 +2089,14 @@ function renderControlTowerAlerts(alerts) {
   }
 
   dom.controlTowerAlerts.innerHTML = alerts
-    .map((alert) => {
+    .map((alert, index) => {
       return `
-        <article class="alert-card alert-card--${alert.tone}" role="listitem">
+        <article
+          class="alert-card alert-card--${alert.tone}"
+          role="listitem"
+          tabindex="0"
+          data-alert-index="${index}"
+        >
           <header class="alert-card-header">
             <span class="alert-badge alert-badge--${alert.tone}">${alert.typeLabel}</span>
             <span class="alert-cita">${alert.citaLabel}: ${alert.citaValue}</span>
