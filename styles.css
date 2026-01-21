@@ -941,6 +941,13 @@ textarea:focus-visible,
   font-weight: 700;
 }
 
+@media (min-width: 900px) {
+  .toolbar-filters[data-filter-group="all"] .filter-block[data-filter="date"],
+  .toolbar-filters[data-filter-group="all"] .filter-block[data-filter="client"] {
+    display: none;
+  }
+}
+
 @media (max-width: 899px) {
   body {
     padding: 14px;
