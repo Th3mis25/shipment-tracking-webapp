@@ -83,6 +83,10 @@ const state = {
   query: '',
   statusFilter: 'all',
   statusOptions: [],
+  clientFilter: 'all',
+  clientOptions: [],
+  dateStartFilter: null,
+  dateEndFilter: null,
   view: DEFAULT_VIEW,
   kpiType: 'otd',
   kpiStartDate: null,
@@ -104,12 +108,16 @@ const dom = {
   tableWrapper: null,
   cardList: null,
   filterContainer: null,
+  filterControls: null,
   searchGroup: null,
   trackingContent: null,
   kpiContent: null,
   kpiTypeSelect: null,
   kpiStartInput: null,
   kpiEndInput: null,
+  dateStartInput: null,
+  dateEndInput: null,
+  clientSelect: null,
   kpiGeneralValue: null,
   kpiActiveLabel: null,
   kpiTableBody: null,
@@ -222,6 +230,51 @@ function buildLayout() {
               +
             </button>
           </div>
+          <!-- Filtros adicionales para la vista "Todas" -->
+          <div class="toolbar-filters" data-filter-group="all">
+            <div class="filter-block" data-filter="date">
+              <button
+                type="button"
+                class="filter-toggle"
+                data-filter-toggle="date"
+                aria-expanded="false"
+                aria-controls="filter-date-panel"
+              >
+                <span class="filter-toggle-icon" aria-hidden="true">📅</span>
+                <span class="filter-toggle-text">Rango de fechas</span>
+              </button>
+              <div class="filter-panel filter-panel-date" id="filter-date-panel" data-filter-panel="date">
+                <div class="filter-field">
+                  <label for="filter-date-start">Fecha inicio</label>
+                  <input id="filter-date-start" type="date" />
+                </div>
+                <div class="filter-field">
+                  <label for="filter-date-end">Fecha fin</label>
+                  <input id="filter-date-end" type="date" />
+                </div>
+              </div>
+            </div>
+            <div class="filter-block" data-filter="client">
+              <button
+                type="button"
+                class="filter-toggle"
+                data-filter-toggle="client"
+                aria-expanded="false"
+                aria-controls="filter-client-panel"
+              >
+                <span class="filter-toggle-icon" aria-hidden="true">🏢</span>
+                <span class="filter-toggle-text">Cliente</span>
+              </button>
+              <div class="filter-panel filter-panel-client" id="filter-client-panel" data-filter-panel="client">
+                <div class="filter-field">
+                  <label for="filter-client">Cliente</label>
+                  <select id="filter-client">
+                    <option value="all">Todos los clientes</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="filter-chips" role="list"></div>
         </div>
         <div class="tracking-content">
@@ -323,11 +376,15 @@ function buildLayout() {
   dom.tableWrapper = dom.app.querySelector('.table-wrapper');
   dom.cardList = dom.app.querySelector('.card-list');
   dom.filterContainer = dom.app.querySelector('.filter-chips');
+  dom.filterControls = dom.app.querySelector('.toolbar-filters');
   dom.trackingContent = dom.app.querySelector('.tracking-content');
   dom.kpiContent = dom.app.querySelector('.kpi-content');
   dom.kpiTypeSelect = dom.app.querySelector('#kpi-type');
   dom.kpiStartInput = dom.app.querySelector('#kpi-start');
   dom.kpiEndInput = dom.app.querySelector('#kpi-end');
+  dom.dateStartInput = dom.app.querySelector('#filter-date-start');
+  dom.dateEndInput = dom.app.querySelector('#filter-date-end');
+  dom.clientSelect = dom.app.querySelector('#filter-client');
   dom.kpiGeneralValue = dom.app.querySelector('#kpi-general');
   dom.kpiActiveLabel = dom.app.querySelector('#kpi-active-label');
   dom.kpiTableBody = dom.app.querySelector('#kpi-table-body');
@@ -354,6 +411,7 @@ function buildLayout() {
   updateViewLayout();
   updateStatusOptions();
   renderStatusFilters([]);
+  updateClientOptions();
 }
 
 // Enlaza eventos de interacción básicos.
@@ -412,6 +470,42 @@ function bindEvents() {
     dom.kpiEndInput.addEventListener('change', (event) => {
       state.kpiEndDate = parseDateInputValue(event.target.value);
       renderKpiView();
+    });
+  }
+
+  if (dom.dateStartInput) {
+    dom.dateStartInput.addEventListener('change', (event) => {
+      state.dateStartFilter = parseDateInputValue(event.target.value);
+      applyFilters();
+    });
+  }
+
+  if (dom.dateEndInput) {
+    dom.dateEndInput.addEventListener('change', (event) => {
+      state.dateEndFilter = parseDateInputValue(event.target.value);
+      applyFilters();
+    });
+  }
+
+  if (dom.clientSelect) {
+    dom.clientSelect.addEventListener('change', (event) => {
+      state.clientFilter = event.target.value || 'all';
+      applyFilters();
+    });
+  }
+
+  if (dom.filterControls) {
+    dom.filterControls.addEventListener('click', (event) => {
+      const toggle = event.target.closest('.filter-toggle');
+      if (!toggle) {
+        return;
+      }
+      const block = toggle.closest('.filter-block');
+      if (!block) {
+        return;
+      }
+      const isOpen = block.classList.toggle('is-open');
+      toggle.setAttribute('aria-expanded', String(isOpen));
     });
   }
 
@@ -618,6 +712,7 @@ async function fetchData() {
     state.error = null;
     state.data = data;
     updateStatusOptions();
+    updateClientOptions();
     applyFilters();
   } catch (error) {
     state.error =
@@ -1249,6 +1344,7 @@ async function handleTripEditSubmit(event) {
     const normalizedRecord = normalizeObjectRow(record);
     Object.assign(state.activeTripRow, normalizedRecord);
     updateStatusOptions();
+    updateClientOptions();
     applyFilters();
     exitTripEditMode();
   } catch (error) {
@@ -1375,6 +1471,7 @@ async function handleAddRecordSubmit(event) {
     const normalizedRecord = normalizeObjectRow(record);
     state.data = [normalizedRecord, ...state.data];
     updateStatusOptions();
+    updateClientOptions();
     applyFilters();
     closeAddRecordModal();
   } catch (error) {
@@ -1410,6 +1507,9 @@ function updateViewLayout() {
   }
   if (dom.filterContainer) {
     dom.filterContainer.hidden = isKpiView;
+  }
+  if (dom.filterControls) {
+    dom.filterControls.hidden = isKpiView || state.view !== ALL_VIEW;
   }
   if (dom.searchGroup) {
     dom.searchGroup.hidden = isKpiView;
@@ -1461,6 +1561,47 @@ function updateStatusOptions() {
   if (!availableKeys.has(state.statusFilter)) {
     state.statusFilter = 'all';
   }
+}
+
+// Configura opciones de clientes dinámicas para el filtro de "Todas".
+function updateClientOptions() {
+  const clientMap = new Map();
+  state.data.forEach((row) => {
+    const rawClient = row.cliente ? row.cliente.toString().trim() : '';
+    if (!rawClient) {
+      return;
+    }
+    const key = rawClient.toLowerCase();
+    if (!clientMap.has(key)) {
+      clientMap.set(key, rawClient);
+    }
+  });
+
+  const options = [{ key: 'all', label: 'Todos los clientes' }];
+  const extraOptions = Array.from(clientMap.entries())
+    .sort((a, b) => a[1].localeCompare(b[1], 'es', { sensitivity: 'base' }))
+    .map(([key, label]) => ({ key, label }));
+
+  state.clientOptions = [...options, ...extraOptions];
+
+  const availableKeys = new Set(state.clientOptions.map((option) => option.key));
+  if (!availableKeys.has(state.clientFilter)) {
+    state.clientFilter = 'all';
+  }
+
+  renderClientOptions();
+}
+
+function renderClientOptions() {
+  if (!dom.clientSelect) {
+    return;
+  }
+
+  dom.clientSelect.innerHTML = state.clientOptions
+    .map((option) => `<option value="${option.key}">${option.label}</option>`)
+    .join('');
+
+  dom.clientSelect.value = state.clientFilter;
 }
 
 function renderStatusFilters(data) {
@@ -1794,6 +1935,44 @@ function shouldIncludeInWeeklyProgram(row, weekRange) {
   return startsAfterOrSame && endsBeforeOrSame;
 }
 
+// Determina la fecha relevante según la vista activa.
+function getRelevantDateForRow(row) {
+  if (state.view === TODAY_DELIVERIES_VIEW) {
+    return row.citaEntregaDate;
+  }
+  if (state.view === DAILY_VIEW || state.view === WEEKLY_PROGRAM_VIEW) {
+    return row.citaCargaDate;
+  }
+  return row.citaCargaDate || row.citaEntregaDate;
+}
+
+function matchesDateRangeFilter(row) {
+  if (!state.dateStartFilter && !state.dateEndFilter) {
+    return true;
+  }
+
+  const relevantDate = getRelevantDateForRow(row);
+  if (!relevantDate) {
+    return false;
+  }
+
+  if (state.dateStartFilter && compareMexicoDates(relevantDate, state.dateStartFilter) < 0) {
+    return false;
+  }
+  if (state.dateEndFilter && compareMexicoDates(relevantDate, state.dateEndFilter) > 0) {
+    return false;
+  }
+  return true;
+}
+
+function matchesClientFilter(row) {
+  if (state.clientFilter === 'all') {
+    return true;
+  }
+  const clientValue = row.cliente ? row.cliente.toString().trim().toLowerCase() : '';
+  return clientValue === state.clientFilter;
+}
+
 // Filtra la data en memoria usando un query simple.
 function applyFilters() {
   if (state.view === KPI_VIEW) {
@@ -1834,6 +2013,13 @@ function applyFilters() {
         .filter(Boolean)
         .some((value) => value.toString().toLowerCase().includes(normalizedQuery));
     });
+  }
+
+  // Los filtros adicionales solo aplican en la vista "Todas".
+  if (state.view === ALL_VIEW) {
+    searchableData = searchableData.filter(
+      (row) => matchesDateRangeFilter(row) && matchesClientFilter(row)
+    );
   }
 
   const activeFilterCount =
