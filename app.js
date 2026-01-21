@@ -806,6 +806,7 @@ function renderCards(data) {
     .map((row, index) => {
       const trMx = row['tr-mx'];
       const trUsa = row['tr-usa'];
+      const citaCarga = row['cita carga'];
       return `
         <article class="card" role="listitem">
           <header class="card-header">
@@ -821,10 +822,11 @@ function renderCards(data) {
             </div>
           </header>
           <div class="card-details">
-            <div><strong>Caja:</strong> ${row.caja || '-'}</div>
-            <div><strong>Trip:</strong> ${row.trip || '-'}</div>
-            ${trMx ? `<div><strong>TR-MX:</strong> ${trMx}</div>` : ''}
-            ${trUsa ? `<div><strong>TR-USA:</strong> ${trUsa}</div>` : ''}
+            <div class="card-meta card-meta-box"><strong>Caja:</strong> ${row.caja || '-'}</div>
+            <div class="card-meta card-meta-trip"><strong>Trip:</strong> ${row.trip || '-'}</div>
+            ${trMx ? `<div class="card-meta card-meta-tr"><strong>TR-MX:</strong> ${trMx}</div>` : ''}
+            ${trUsa ? `<div class="card-meta card-meta-tr"><strong>TR-USA:</strong> ${trUsa}</div>` : ''}
+            ${citaCarga ? `<div class="card-meta card-meta-cita"><strong>Cita carga:</strong> ${citaCarga}</div>` : ''}
           </div>
         </article>
       `;
