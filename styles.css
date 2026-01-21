@@ -836,54 +836,76 @@ textarea:focus-visible,
 
   .card-header {
     align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .card-title-group {
     gap: 2px;
   }
 
-  .card-details {
-    gap: 6px 10px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .card-title {
+    font-size: 18px;
   }
 
-  .card-meta {
-    align-items: center;
-    display: inline-flex;
-    gap: 6px;
-  }
-
-  .card-meta strong {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .card-meta strong::before {
-    display: inline-flex;
-    font-size: 12px;
-    opacity: 0.7;
-  }
-
-  .card-meta-box strong::before {
-    content: '📦';
-  }
-
-  .card-meta-tr strong::before {
-    content: '🧾';
-  }
-
-  .card-meta-cita strong::before {
-    content: '⏱';
-  }
-
-  .card-meta-trip {
+  .card-title-group p:not(.card-title) {
     display: none;
   }
 
   .card-header-actions {
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .card-details {
+    gap: 6px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card-details strong {
+    font-weight: 500;
+  }
+
+  .card-meta {
+    align-items: center;
+    display: inline-flex;
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .card-meta strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .card-meta strong::before {
+    content: none;
+    display: none;
+  }
+
+  .card-meta-trip {
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    order: 1;
+  }
+
+  .card-meta-trip strong {
+    font-weight: 600;
+  }
+
+  .card-meta-box {
+    order: 2;
+  }
+
+  .card-meta-tr {
+    order: 3;
+  }
+
+  .card-meta-cita {
+    order: 4;
   }
 
   .card-view-button {
