@@ -102,7 +102,8 @@ const state = {
   error: null,
   activeTripRow: null,
   isEditingTrip: false,
-  controlTowerAlerts: []
+  controlTowerAlerts: [],
+  controlTowerActiveRows: []
 };
 
 // Referencias a elementos principales del DOM.
@@ -134,6 +135,10 @@ const dom = {
   controlTowerContent: null,
   controlTowerAlerts: null,
   controlTowerEmpty: null,
+  controlTowerActiveCard: null,
+  controlTowerActiveModal: null,
+  controlTowerActiveList: null,
+  controlTowerActiveEmpty: null,
   controlTowerValues: {},
   emptyState: null,
   menuButtons: null,
@@ -369,9 +374,16 @@ function buildLayout() {
               <p>Indicadores rápidos con el rango actual de datos.</p>
             </div>
             <div class="control-tower-summary">
-              <article class="control-tower-card">
+              <article
+                class="control-tower-card control-tower-card--interactive"
+                data-control-action="active-shipments"
+                role="button"
+                tabindex="0"
+                aria-label="Ver detalle de envíos activos"
+              >
                 <p class="control-tower-card-title">Total de envíos activos</p>
                 <p class="control-tower-card-value" data-control-value="active-shipments">0</p>
+                <p class="control-tower-card-hint">Ver detalle</p>
               </article>
               <article class="control-tower-card">
                 <p class="control-tower-card-title">% OTD global (rango actual)</p>
@@ -412,6 +424,23 @@ function buildLayout() {
         <div class="modal-body"></div>
       </div>
     </div>
+    <div class="modal-backdrop control-tower-active-modal" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="active-shipments-title">
+        <header class="modal-header">
+          <div>
+            <h2 id="active-shipments-title">Envíos activos</h2>
+            <p class="control-tower-active-subtitle">
+              Auditoría rápida de los registros activos en el rango actual.
+            </p>
+          </div>
+          <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+        </header>
+        <div class="modal-body">
+          <div class="control-tower-active-list" role="list"></div>
+          <p class="control-tower-active-empty" hidden>No hay envíos activos</p>
+        </div>
+      </div>
+    </div>
     <div class="modal-backdrop add-record-modal" hidden>
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="add-record-title">
         <header class="modal-header">
@@ -450,6 +479,10 @@ function buildLayout() {
   dom.controlTowerContent = dom.app.querySelector('.control-tower-content');
   dom.controlTowerAlerts = dom.app.querySelector('.control-tower-alerts');
   dom.controlTowerEmpty = dom.app.querySelector('.control-tower-empty');
+  dom.controlTowerActiveCard = dom.app.querySelector('[data-control-action="active-shipments"]');
+  dom.controlTowerActiveModal = dom.app.querySelector('.control-tower-active-modal');
+  dom.controlTowerActiveList = dom.app.querySelector('.control-tower-active-list');
+  dom.controlTowerActiveEmpty = dom.app.querySelector('.control-tower-active-empty');
   dom.controlTowerValues = {
     activeShipments: dom.app.querySelector('[data-control-value="active-shipments"]'),
     otdGlobal: dom.app.querySelector('[data-control-value="otd-global"]'),
@@ -662,6 +695,20 @@ function bindEvents() {
     });
   }
 
+  if (dom.controlTowerActiveCard) {
+    dom.controlTowerActiveCard.addEventListener('click', () => {
+      openControlTowerActiveModal();
+    });
+
+    dom.controlTowerActiveCard.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+      event.preventDefault();
+      openControlTowerActiveModal();
+    });
+  }
+
   dom.tripModal.addEventListener('click', (event) => {
     if (event.target === dom.tripModal || event.target.closest('.modal-close')) {
       closeTripModal();
@@ -695,6 +742,14 @@ function bindEvents() {
     }
   });
 
+  if (dom.controlTowerActiveModal) {
+    dom.controlTowerActiveModal.addEventListener('click', (event) => {
+      if (event.target === dom.controlTowerActiveModal || event.target.closest('.modal-close')) {
+        closeControlTowerActiveModal();
+      }
+    });
+  }
+
   dom.addRecordCancel.addEventListener('click', () => {
     closeAddRecordModal();
   });
@@ -710,6 +765,10 @@ function bindEvents() {
 
     if (!dom.tripModal.hidden) {
       closeTripModal();
+    }
+
+    if (dom.controlTowerActiveModal && !dom.controlTowerActiveModal.hidden) {
+      closeControlTowerActiveModal();
     }
 
     if (!dom.addRecordModal.hidden) {
@@ -1162,6 +1221,31 @@ function closeTripModal() {
   dom.tripEditButton.hidden = true;
   state.activeTripRow = null;
   state.isEditingTrip = false;
+}
+
+// Modal de auditoría para envíos activos en Control Tower.
+function openControlTowerActiveModal() {
+  if (!dom.controlTowerActiveModal) {
+    return;
+  }
+
+  const activeRows = state.controlTowerActiveRows.length
+    ? state.controlTowerActiveRows
+    : getControlTowerActiveRows();
+  renderControlTowerActiveList(activeRows);
+  dom.controlTowerActiveModal.hidden = false;
+}
+
+function closeControlTowerActiveModal() {
+  if (!dom.controlTowerActiveModal || !dom.controlTowerActiveList) {
+    return;
+  }
+
+  dom.controlTowerActiveModal.hidden = true;
+  dom.controlTowerActiveList.innerHTML = '';
+  if (dom.controlTowerActiveEmpty) {
+    dom.controlTowerActiveEmpty.hidden = true;
+  }
 }
 
 function openAddRecordModal() {
@@ -1958,6 +2042,7 @@ function renderControlTower() {
 
   const metrics = calculateControlTowerMetrics();
   state.controlTowerAlerts = metrics.alerts;
+  state.controlTowerActiveRows = metrics.activeRows;
   if (dom.controlTowerValues.activeShipments) {
     dom.controlTowerValues.activeShipments.textContent = metrics.activeCount.toString();
   }
@@ -1979,7 +2064,7 @@ function renderControlTower() {
 }
 
 function calculateControlTowerMetrics() {
-  const activeRows = state.data.filter((row) => isActiveShipmentForControlTower(row));
+  const activeRows = getControlTowerActiveRows();
   const rollingRange = getMexicoRollingRange(15);
   // Estructura lista para agregar tendencias y gráficas sin recalcular datos base.
   const otdResults = calculateKpiResults(
@@ -1995,11 +2080,16 @@ function calculateControlTowerMetrics() {
   const alerts = buildControlTowerAlerts(activeRows);
 
   return {
+    activeRows,
     activeCount: activeRows.length,
     otd: otdResults,
     otp: otpResults,
     alerts
   };
+}
+
+function getControlTowerActiveRows() {
+  return state.data.filter((row) => isActiveShipmentForControlTower(row));
 }
 
 function isActiveShipmentForControlTower(row) {
@@ -2133,6 +2223,97 @@ function renderControlTowerAlerts(alerts) {
     .join('');
 
   dom.controlTowerEmpty.hidden = alerts.length > 0;
+}
+
+// Renderiza el listado detallado de envíos activos en el modal.
+function renderControlTowerActiveList(rows) {
+  if (!dom.controlTowerActiveList || !dom.controlTowerActiveEmpty) {
+    return;
+  }
+
+  if (!rows.length) {
+    dom.controlTowerActiveList.innerHTML = '';
+    dom.controlTowerActiveEmpty.hidden = false;
+    return;
+  }
+
+  dom.controlTowerActiveEmpty.hidden = true;
+  dom.controlTowerActiveList.innerHTML = rows
+    .map((row) => {
+      const client = row.cliente || 'Cliente sin nombre';
+      const trip = row.trip || 'Sin trip';
+      const status = row.estado || 'Sin estado';
+      const cita = getControlTowerRelevantCita(row);
+
+      return `
+        <article class="control-tower-active-card" role="listitem">
+          <header class="control-tower-active-header">
+            <div>
+              <p class="control-tower-active-label">Cliente</p>
+              <p class="control-tower-active-value">${client}</p>
+            </div>
+            <div class="control-tower-active-status">
+              ${renderStatusChip(status)}
+            </div>
+          </header>
+          <div class="control-tower-active-body">
+            <div class="control-tower-active-meta">
+              <div>
+                <p class="control-tower-active-label">Trip</p>
+                <p class="control-tower-active-value">${trip}</p>
+              </div>
+              <div>
+                <p class="control-tower-active-label">${cita.label}</p>
+                <p class="control-tower-active-value">${cita.value}</p>
+              </div>
+            </div>
+            <!-- Espacio reservado para acciones futuras (ej. ver detalle). -->
+            <div class="control-tower-active-actions" aria-hidden="true"></div>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
+function getControlTowerRelevantCita(row) {
+  const citaCandidates = [
+    { key: 'cita carga', label: 'Cita carga' },
+    { key: 'cita entrega', label: 'Cita entrega' }
+  ]
+    .map(({ key, label }) => {
+      const value = row[key];
+      const date = parseDateTimeValue(value);
+      return {
+        label,
+        value: value || 'Sin cita',
+        date
+      };
+    })
+    .filter((item) => item.value && item.value !== 'Sin cita');
+
+  if (citaCandidates.length === 0) {
+    return { label: 'Cita', value: 'Sin cita' };
+  }
+
+  const now = new Date();
+  const upcoming = citaCandidates
+    .filter((item) => item.date && item.date >= now)
+    .sort((a, b) => a.date - b.date);
+
+  if (upcoming.length) {
+    return upcoming[0];
+  }
+
+  const past = citaCandidates
+    .filter((item) => item.date)
+    .sort((a, b) => b.date - a.date);
+
+  if (past.length) {
+    return past[0];
+  }
+
+  return citaCandidates[0];
 }
 
 function getMexicoDateParts(date) {
