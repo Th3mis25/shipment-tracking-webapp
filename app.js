@@ -8,6 +8,7 @@ const ALL_VIEW = 'all';
 const DAILY_VIEW = 'daily';
 const TODAY_DELIVERIES_VIEW = 'today-deliveries';
 const WEEKLY_PROGRAM_VIEW = 'weekly-program';
+const KPI_VIEW = 'kpis';
 const DEFAULT_VIEW = DAILY_VIEW;
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
 const THEME_STORAGE_KEY = 'tracking-theme';
@@ -32,6 +33,20 @@ const DEFAULT_TABLE_COLUMNS = [
   { key: 'tr-usa', label: 'TR-USA' },
   { key: 'actions', label: 'Acciones' }
 ];
+const KPI_DEFINITIONS = {
+  otd: {
+    label: 'OTD',
+    citaKey: 'cita entrega',
+    llegadaKey: 'llegada entrega',
+    citaDateKey: 'citaEntregaDate'
+  },
+  otp: {
+    label: 'OTP',
+    citaKey: 'cita carga',
+    llegadaKey: 'llegada carga',
+    citaDateKey: 'citaCargaDate'
+  }
+};
 const DAILY_TABLE_COLUMNS = [
   { key: 'cliente', label: 'Cliente' },
   { key: 'estado', label: 'Estado' },
@@ -69,6 +84,9 @@ const state = {
   statusFilter: 'all',
   statusOptions: [],
   view: DEFAULT_VIEW,
+  kpiType: 'otd',
+  kpiStartDate: null,
+  kpiEndDate: null,
   error: null,
   activeTripRow: null,
   isEditingTrip: false
@@ -86,6 +104,16 @@ const dom = {
   tableWrapper: null,
   cardList: null,
   filterContainer: null,
+  searchGroup: null,
+  trackingContent: null,
+  kpiContent: null,
+  kpiTypeSelect: null,
+  kpiStartInput: null,
+  kpiEndInput: null,
+  kpiGeneralValue: null,
+  kpiActiveLabel: null,
+  kpiTableBody: null,
+  kpiEmptyState: null,
   emptyState: null,
   menuButtons: null,
   menuToggle: null,
@@ -159,6 +187,9 @@ function buildLayout() {
                   <button type="button" class="side-menu-button" data-view="${WEEKLY_PROGRAM_VIEW}">
                     Programa semanal
                   </button>
+                  <button type="button" class="side-menu-button" data-view="${KPI_VIEW}">
+                    KPIs
+                  </button>
                 </div>
               </div>
               <div class="search-group is-collapsed">
@@ -193,16 +224,67 @@ function buildLayout() {
           </div>
           <div class="filter-chips" role="list"></div>
         </div>
-        <div class="table-wrapper">
-          <div class="table-scroll" role="region" aria-label="Tabla de tracking">
-            <table class="tracking-table">
-              <thead></thead>
-              <tbody></tbody>
-            </table>
+        <div class="tracking-content">
+          <div class="table-wrapper">
+            <div class="table-scroll" role="region" aria-label="Tabla de tracking">
+              <table class="tracking-table">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
           </div>
+          <div class="card-list" role="list"></div>
+          <p class="empty-state" hidden>${DEFAULT_EMPTY_MESSAGE}</p>
         </div>
-        <div class="card-list" role="list"></div>
-        <p class="empty-state" hidden>${DEFAULT_EMPTY_MESSAGE}</p>
+        <div class="kpi-content" hidden>
+          <header class="kpi-header">
+            <div>
+              <h2 class="kpi-title">KPIs operativos</h2>
+              <p class="kpi-subtitle">
+                Resultados para <strong id="kpi-active-label">OTD</strong>
+              </p>
+            </div>
+          </header>
+          <div class="kpi-filters">
+            <div class="form-field">
+              <label for="kpi-type">Tipo de KPI</label>
+              <select id="kpi-type">
+                <option value="otd" selected>OTD</option>
+                <option value="otp">OTP</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="kpi-start">Fecha inicio</label>
+              <input id="kpi-start" type="date" />
+            </div>
+            <div class="form-field">
+              <label for="kpi-end">Fecha fin</label>
+              <input id="kpi-end" type="date" />
+            </div>
+          </div>
+          <div class="kpi-summary">
+            <article class="kpi-card">
+              <p class="kpi-card-title">KPI general</p>
+              <p class="kpi-card-value" id="kpi-general">0%</p>
+            </article>
+          </div>
+          <div class="table-wrapper kpi-table-wrapper">
+            <div class="table-scroll" role="region" aria-label="Tabla KPI por cliente">
+              <table class="tracking-table">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Total evaluados</th>
+                    <th>Cumple</th>
+                    <th>% de cumplimiento</th>
+                  </tr>
+                </thead>
+                <tbody id="kpi-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <p class="kpi-empty-state" hidden>No hay registros para el rango seleccionado.</p>
+        </div>
       </section>
     </div>
     <div class="modal-backdrop" hidden>
@@ -235,11 +317,21 @@ function buildLayout() {
   dom.searchInput = dom.app.querySelector('#search');
   dom.searchToggle = dom.app.querySelector('.search-toggle');
   dom.searchField = dom.app.querySelector('.search-field');
+  dom.searchGroup = dom.app.querySelector('.search-group');
   dom.tableBody = dom.app.querySelector('tbody');
   dom.tableHead = dom.app.querySelector('.tracking-table thead');
   dom.tableWrapper = dom.app.querySelector('.table-wrapper');
   dom.cardList = dom.app.querySelector('.card-list');
   dom.filterContainer = dom.app.querySelector('.filter-chips');
+  dom.trackingContent = dom.app.querySelector('.tracking-content');
+  dom.kpiContent = dom.app.querySelector('.kpi-content');
+  dom.kpiTypeSelect = dom.app.querySelector('#kpi-type');
+  dom.kpiStartInput = dom.app.querySelector('#kpi-start');
+  dom.kpiEndInput = dom.app.querySelector('#kpi-end');
+  dom.kpiGeneralValue = dom.app.querySelector('#kpi-general');
+  dom.kpiActiveLabel = dom.app.querySelector('#kpi-active-label');
+  dom.kpiTableBody = dom.app.querySelector('#kpi-table-body');
+  dom.kpiEmptyState = dom.app.querySelector('.kpi-empty-state');
   dom.emptyState = dom.app.querySelector('.empty-state');
   dom.menuButtons = dom.app.querySelectorAll('.side-menu-button');
   dom.menuToggle = dom.app.querySelector('.side-menu-toggle');
@@ -259,6 +351,7 @@ function buildLayout() {
   updateMenuActiveState();
   setMenuOpen(false);
   setSearchOpen(false);
+  updateViewLayout();
   updateStatusOptions();
   renderStatusFilters([]);
 }
@@ -300,6 +393,27 @@ function bindEvents() {
   dom.addRecordButton.addEventListener('click', () => {
     openAddRecordModal();
   });
+
+  if (dom.kpiTypeSelect) {
+    dom.kpiTypeSelect.addEventListener('change', (event) => {
+      state.kpiType = event.target.value || 'otd';
+      renderKpiView();
+    });
+  }
+
+  if (dom.kpiStartInput) {
+    dom.kpiStartInput.addEventListener('change', (event) => {
+      state.kpiStartDate = parseDateInputValue(event.target.value);
+      renderKpiView();
+    });
+  }
+
+  if (dom.kpiEndInput) {
+    dom.kpiEndInput.addEventListener('change', (event) => {
+      state.kpiEndDate = parseDateInputValue(event.target.value);
+      renderKpiView();
+    });
+  }
 
   dom.app.addEventListener('click', (event) => {
     const button = event.target.closest('.side-menu-button');
@@ -1282,7 +1396,27 @@ function setView(view) {
   state.view = view;
   updateMenuActiveState();
   setMenuOpen(false);
+  updateViewLayout();
   applyFilters();
+}
+
+function updateViewLayout() {
+  const isKpiView = state.view === KPI_VIEW;
+  if (dom.trackingContent) {
+    dom.trackingContent.hidden = isKpiView;
+  }
+  if (dom.kpiContent) {
+    dom.kpiContent.hidden = !isKpiView;
+  }
+  if (dom.filterContainer) {
+    dom.filterContainer.hidden = isKpiView;
+  }
+  if (dom.searchGroup) {
+    dom.searchGroup.hidden = isKpiView;
+  }
+  if (dom.addRecordButton) {
+    dom.addRecordButton.hidden = isKpiView;
+  }
 }
 
 function updateMenuActiveState() {
@@ -1414,6 +1548,166 @@ function debounce(callback, delay) {
   };
 }
 
+function parseDateInputValue(value) {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+function parseDateTimeValue(value) {
+  if (!value) {
+    return null;
+  }
+  const stringValue = value.toString().trim();
+  if (!stringValue) {
+    return null;
+  }
+
+  const match = stringValue.match(/^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/);
+  if (match) {
+    const [, day, month, year, hour, minute] = match;
+    return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+  }
+
+  const parsed = parseDateValue(stringValue);
+  return parsed;
+}
+
+function getKpiDefinition(type) {
+  return KPI_DEFINITIONS[type] || KPI_DEFINITIONS.otd;
+}
+
+function isWithinKpiRange(citaDate, startDate, endDate) {
+  if (!citaDate) {
+    return false;
+  }
+  if (startDate && compareMexicoDates(citaDate, startDate) < 0) {
+    return false;
+  }
+  if (endDate && compareMexicoDates(citaDate, endDate) > 0) {
+    return false;
+  }
+  return true;
+}
+
+function formatPercentage(value) {
+  return `${value.toFixed(1)}%`;
+}
+
+// KPI: lógica preparada para sumar gráficas en el futuro sin reescribir cálculos.
+function renderKpiView() {
+  if (!dom.kpiContent) {
+    return;
+  }
+
+  const definition = getKpiDefinition(state.kpiType);
+  const startDate = state.kpiStartDate;
+  const endDate = state.kpiEndDate;
+
+  if (dom.kpiActiveLabel) {
+    dom.kpiActiveLabel.textContent = definition.label;
+  }
+
+  const results = calculateKpiResults(definition, startDate, endDate);
+  if (dom.kpiGeneralValue) {
+    dom.kpiGeneralValue.textContent = results.total === 0
+      ? '0%'
+      : formatPercentage(results.complianceRate);
+  }
+
+  renderKpiTable(results.byClient);
+}
+
+function calculateKpiResults(definition, startDate, endDate) {
+  const summary = {
+    total: 0,
+    compliant: 0,
+    complianceRate: 0,
+    byClient: []
+  };
+
+  const clientMap = new Map();
+
+  state.data.forEach((row) => {
+    const citaDate = row[definition.citaDateKey];
+    if (!isWithinKpiRange(citaDate, startDate, endDate)) {
+      return;
+    }
+
+    const llegadaDate = parseDateTimeValue(row[definition.llegadaKey]);
+    const isCompliant = Boolean(citaDate && llegadaDate && llegadaDate <= citaDate);
+    summary.total += 1;
+    if (isCompliant) {
+      summary.compliant += 1;
+    }
+
+    const clientLabel = row.cliente ? row.cliente.toString().trim() : '';
+    const clientKey = clientLabel || 'Sin cliente';
+    const existing = clientMap.get(clientKey) || { total: 0, compliant: 0 };
+    existing.total += 1;
+    if (isCompliant) {
+      existing.compliant += 1;
+    }
+    clientMap.set(clientKey, existing);
+  });
+
+  summary.complianceRate = summary.total
+    ? (summary.compliant / summary.total) * 100
+    : 0;
+
+  summary.byClient = Array.from(clientMap.entries()).map(([client, values]) => {
+    const rate = values.total ? (values.compliant / values.total) * 100 : 0;
+    return {
+      client,
+      total: values.total,
+      compliant: values.compliant,
+      rate
+    };
+  });
+
+  return summary;
+}
+
+function renderKpiTable(rows) {
+  if (!dom.kpiTableBody || !dom.kpiEmptyState) {
+    return;
+  }
+
+  const sorted = [...rows].sort((a, b) => {
+    if (b.rate !== a.rate) {
+      return b.rate - a.rate;
+    }
+    return b.total - a.total;
+  });
+
+  dom.kpiTableBody.innerHTML = sorted
+    .map((row) => {
+      const rateText = row.total === 0 ? '0%' : formatPercentage(row.rate);
+      return `
+        <tr>
+          <td>${row.client}</td>
+          <td>${row.total}</td>
+          <td>${row.compliant}</td>
+          <td>${rateText}</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  dom.kpiEmptyState.hidden = sorted.length > 0;
+  if (dom.kpiContent) {
+    const tableWrapper = dom.kpiContent.querySelector('.kpi-table-wrapper');
+    if (tableWrapper) {
+      tableWrapper.hidden = sorted.length === 0;
+    }
+  }
+}
+
 function getMexicoDateParts(date) {
   const formatter = new Intl.DateTimeFormat('es-MX', {
     timeZone: MEXICO_TZ,
@@ -1502,6 +1796,11 @@ function shouldIncludeInWeeklyProgram(row, weekRange) {
 
 // Filtra la data en memoria usando un query simple.
 function applyFilters() {
+  if (state.view === KPI_VIEW) {
+    renderKpiView();
+    return;
+  }
+
   const today = new Date();
   let baseData = state.data;
   if (state.view === DAILY_VIEW) {
