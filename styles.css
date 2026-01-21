@@ -975,6 +975,22 @@ textarea:focus-visible,
   padding: 16px;
 }
 
+.control-tower-card--interactive {
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.control-tower-card--interactive:hover {
+  border-color: var(--primary-dark);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+  transform: translateY(-1px);
+}
+
+.control-tower-card--interactive:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 .control-tower-card-title {
   color: var(--text-muted);
   font-size: 14px;
@@ -985,6 +1001,12 @@ textarea:focus-visible,
   color: var(--primary-dark);
   font-size: 26px;
   font-weight: 700;
+  margin: 0;
+}
+
+.control-tower-card-hint {
+  color: var(--text-muted);
+  font-size: 12px;
   margin: 0;
 }
 
@@ -1077,6 +1099,71 @@ textarea:focus-visible,
   color: var(--text-muted);
   font-size: 13px;
   margin: 0;
+}
+
+.control-tower-active-subtitle {
+  color: var(--text-muted);
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.control-tower-active-list {
+  display: grid;
+  gap: 12px;
+}
+
+.control-tower-active-empty {
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+.control-tower-active-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.control-tower-active-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.control-tower-active-body {
+  display: grid;
+  gap: 12px;
+}
+
+.control-tower-active-meta {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.control-tower-active-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.control-tower-active-value {
+  margin: 0;
+  font-weight: 600;
+}
+
+.control-tower-active-status .status-chip {
+  margin: 0;
+}
+
+.control-tower-active-actions {
+  min-height: 8px;
 }
 
 .form-actions {
