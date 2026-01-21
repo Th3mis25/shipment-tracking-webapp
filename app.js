@@ -1980,9 +1980,18 @@ function renderControlTower() {
 
 function calculateControlTowerMetrics() {
   const activeRows = state.data.filter((row) => isActiveShipmentForControlTower(row));
+  const rollingRange = getMexicoRollingRange(15);
   // Estructura lista para agregar tendencias y gráficas sin recalcular datos base.
-  const otdResults = calculateKpiResults(KPI_DEFINITIONS.otd, null, null);
-  const otpResults = calculateKpiResults(KPI_DEFINITIONS.otp, null, null);
+  const otdResults = calculateKpiResults(
+    KPI_DEFINITIONS.otd,
+    rollingRange.startDate,
+    rollingRange.endDate
+  );
+  const otpResults = calculateKpiResults(
+    KPI_DEFINITIONS.otp,
+    rollingRange.startDate,
+    rollingRange.endDate
+  );
   const alerts = buildControlTowerAlerts(activeRows);
 
   return {
@@ -2158,6 +2167,13 @@ function compareMexicoDates(dateA, dateB) {
   }
 
   return partsA.day - partsB.day;
+}
+
+function getMexicoRollingRange(days) {
+  const { year, month, day } = getMexicoDateParts(new Date());
+  const endDate = new Date(Date.UTC(year, month - 1, day, 12));
+  const startDate = new Date(Date.UTC(year, month - 1, day - (days - 1), 12));
+  return { startDate, endDate };
 }
 
 function shouldIncludeInDailyLoads(row, today) {
