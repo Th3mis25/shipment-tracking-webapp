@@ -9,12 +9,15 @@ const DAILY_VIEW = 'daily';
 const TODAY_DELIVERIES_VIEW = 'today-deliveries';
 const WEEKLY_PROGRAM_VIEW = 'weekly-program';
 const KPI_VIEW = 'kpis';
+const CONTROL_TOWER_VIEW = 'control-tower';
 const DEFAULT_VIEW = DAILY_VIEW;
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
 const THEME_STORAGE_KEY = 'tracking-theme';
 const THEME_DARK = 'dark';
 const THEME_LIGHT = 'light';
 const BASE_STATUS_FILTERS = ['all', 'delivered', 'drop', 'cancelled'];
+const CONTROL_TOWER_RISK_HOURS = 4;
+const CONTROL_TOWER_MISSING_EVENT_HOURS = 12;
 const ALLOWED_OVERDUE_STATUSES = new Set([
   'drop',
   'live',
@@ -46,6 +49,11 @@ const KPI_DEFINITIONS = {
     llegadaKey: 'llegada carga',
     citaDateKey: 'citaCargaDate'
   }
+};
+const CONTROL_TOWER_ALERT_TYPES = {
+  delay: { label: 'Retraso confirmado', priority: 1, tone: 'danger' },
+  risk: { label: 'Riesgo de retraso', priority: 2, tone: 'warning' },
+  missing: { label: 'Falta de evento', priority: 3, tone: 'info' }
 };
 const DAILY_TABLE_COLUMNS = [
   { key: 'cliente', label: 'Cliente' },
@@ -122,6 +130,10 @@ const dom = {
   kpiActiveLabel: null,
   kpiTableBody: null,
   kpiEmptyState: null,
+  controlTowerContent: null,
+  controlTowerAlerts: null,
+  controlTowerEmpty: null,
+  controlTowerValues: {},
   emptyState: null,
   menuButtons: null,
   menuToggle: null,
@@ -197,6 +209,9 @@ function buildLayout() {
                   </button>
                   <button type="button" class="side-menu-button" data-view="${KPI_VIEW}">
                     KPIs
+                  </button>
+                  <button type="button" class="side-menu-button" data-view="${CONTROL_TOWER_VIEW}">
+                    Control Tower
                   </button>
                 </div>
               </div>
@@ -338,6 +353,48 @@ function buildLayout() {
           </div>
           <p class="kpi-empty-state" hidden>No hay registros para el rango seleccionado.</p>
         </div>
+        <div class="control-tower-content" hidden>
+          <header class="control-tower-header">
+            <div>
+              <h2 class="control-tower-title">Control Tower</h2>
+              <p class="control-tower-subtitle">
+                Panel central para monitorear alertas y estado global.
+              </p>
+            </div>
+          </header>
+          <section class="control-tower-section">
+            <div class="control-tower-section-header">
+              <h3>Estado global</h3>
+              <p>Indicadores rápidos con el rango actual de datos.</p>
+            </div>
+            <div class="control-tower-summary">
+              <article class="control-tower-card">
+                <p class="control-tower-card-title">Total de envíos activos</p>
+                <p class="control-tower-card-value" data-control-value="active-shipments">0</p>
+              </article>
+              <article class="control-tower-card">
+                <p class="control-tower-card-title">% OTD global (rango actual)</p>
+                <p class="control-tower-card-value" data-control-value="otd-global">0%</p>
+              </article>
+              <article class="control-tower-card">
+                <p class="control-tower-card-title">% OTP global (rango actual)</p>
+                <p class="control-tower-card-value" data-control-value="otp-global">0%</p>
+              </article>
+              <article class="control-tower-card">
+                <p class="control-tower-card-title">Total de envíos con alerta</p>
+                <p class="control-tower-card-value" data-control-value="alert-shipments">0</p>
+              </article>
+            </div>
+          </section>
+          <section class="control-tower-section">
+            <div class="control-tower-section-header">
+              <h3>Alertas críticas</h3>
+              <p>Prioridad: retraso confirmado, riesgo de retraso y falta de evento.</p>
+            </div>
+            <div class="control-tower-alerts" role="list"></div>
+            <p class="control-tower-empty" hidden>No hay alertas críticas en este momento.</p>
+          </section>
+        </div>
       </section>
     </div>
     <div class="modal-backdrop" hidden>
@@ -389,6 +446,15 @@ function buildLayout() {
   dom.kpiActiveLabel = dom.app.querySelector('#kpi-active-label');
   dom.kpiTableBody = dom.app.querySelector('#kpi-table-body');
   dom.kpiEmptyState = dom.app.querySelector('.kpi-empty-state');
+  dom.controlTowerContent = dom.app.querySelector('.control-tower-content');
+  dom.controlTowerAlerts = dom.app.querySelector('.control-tower-alerts');
+  dom.controlTowerEmpty = dom.app.querySelector('.control-tower-empty');
+  dom.controlTowerValues = {
+    activeShipments: dom.app.querySelector('[data-control-value="active-shipments"]'),
+    otdGlobal: dom.app.querySelector('[data-control-value="otd-global"]'),
+    otpGlobal: dom.app.querySelector('[data-control-value="otp-global"]'),
+    alertShipments: dom.app.querySelector('[data-control-value="alert-shipments"]')
+  };
   dom.emptyState = dom.app.querySelector('.empty-state');
   dom.menuButtons = dom.app.querySelectorAll('.side-menu-button');
   dom.menuToggle = dom.app.querySelector('.side-menu-toggle');
@@ -1499,23 +1565,27 @@ function setView(view) {
 
 function updateViewLayout() {
   const isKpiView = state.view === KPI_VIEW;
+  const isControlTowerView = state.view === CONTROL_TOWER_VIEW;
   if (dom.trackingContent) {
-    dom.trackingContent.hidden = isKpiView;
+    dom.trackingContent.hidden = isKpiView || isControlTowerView;
   }
   if (dom.kpiContent) {
     dom.kpiContent.hidden = !isKpiView;
   }
+  if (dom.controlTowerContent) {
+    dom.controlTowerContent.hidden = !isControlTowerView;
+  }
   if (dom.filterContainer) {
-    dom.filterContainer.hidden = isKpiView;
+    dom.filterContainer.hidden = isKpiView || isControlTowerView;
   }
   if (dom.filterControls) {
-    dom.filterControls.hidden = isKpiView || state.view !== ALL_VIEW;
+    dom.filterControls.hidden = isKpiView || isControlTowerView || state.view !== ALL_VIEW;
   }
   if (dom.searchGroup) {
-    dom.searchGroup.hidden = isKpiView;
+    dom.searchGroup.hidden = isKpiView || isControlTowerView;
   }
   if (dom.addRecordButton) {
-    dom.addRecordButton.hidden = isKpiView;
+    dom.addRecordButton.hidden = isKpiView || isControlTowerView;
   }
 }
 
@@ -1849,6 +1919,175 @@ function renderKpiTable(rows) {
   }
 }
 
+// Control Tower: lógica central para alertas y estado global.
+function renderControlTower() {
+  if (!dom.controlTowerContent) {
+    return;
+  }
+
+  const metrics = calculateControlTowerMetrics();
+  if (dom.controlTowerValues.activeShipments) {
+    dom.controlTowerValues.activeShipments.textContent = metrics.activeCount.toString();
+  }
+  if (dom.controlTowerValues.otdGlobal) {
+    dom.controlTowerValues.otdGlobal.textContent = metrics.otd.total === 0
+      ? '0%'
+      : formatPercentage(metrics.otd.complianceRate);
+  }
+  if (dom.controlTowerValues.otpGlobal) {
+    dom.controlTowerValues.otpGlobal.textContent = metrics.otp.total === 0
+      ? '0%'
+      : formatPercentage(metrics.otp.complianceRate);
+  }
+  if (dom.controlTowerValues.alertShipments) {
+    dom.controlTowerValues.alertShipments.textContent = metrics.alerts.length.toString();
+  }
+
+  renderControlTowerAlerts(metrics.alerts);
+}
+
+function calculateControlTowerMetrics() {
+  const activeRows = state.data.filter((row) => isActiveShipmentForControlTower(row));
+  // Estructura lista para agregar tendencias y gráficas sin recalcular datos base.
+  const otdResults = calculateKpiResults(KPI_DEFINITIONS.otd, null, null);
+  const otpResults = calculateKpiResults(KPI_DEFINITIONS.otp, null, null);
+  const alerts = buildControlTowerAlerts(activeRows);
+
+  return {
+    activeCount: activeRows.length,
+    otd: otdResults,
+    otp: otpResults,
+    alerts
+  };
+}
+
+function isActiveShipmentForControlTower(row) {
+  const statusValue = getRowStatusValue(row);
+  if (!statusValue) {
+    return true;
+  }
+  return !statusValue.includes('delivered') && !statusValue.includes('cancelled');
+}
+
+function buildControlTowerAlerts(rows) {
+  const now = new Date();
+  const alerts = [];
+
+  rows.forEach((row) => {
+    const cargaAlert = createControlTowerAlert(row, {
+      citaKey: 'cita carga',
+      llegadaKey: 'llegada carga',
+      citaLabel: 'Cita carga',
+      now
+    });
+    if (cargaAlert) {
+      alerts.push(cargaAlert);
+    }
+
+    const entregaAlert = createControlTowerAlert(row, {
+      citaKey: 'cita entrega',
+      llegadaKey: 'llegada entrega',
+      citaLabel: 'Cita entrega',
+      now
+    });
+    if (entregaAlert) {
+      alerts.push(entregaAlert);
+    }
+  });
+
+  return alerts.sort((a, b) => {
+    if (a.priority !== b.priority) {
+      return a.priority - b.priority;
+    }
+    return a.citaDate - b.citaDate;
+  });
+}
+
+function createControlTowerAlert(row, { citaKey, llegadaKey, citaLabel, now }) {
+  const citaValue = row[citaKey];
+  const citaDate = parseDateTimeValue(citaValue);
+  if (!citaDate) {
+    return null;
+  }
+
+  const llegadaDate = parseDateTimeValue(row[llegadaKey]);
+  const hoursUntilCita = (citaDate - now) / (1000 * 60 * 60);
+  const hoursAfterCita = (now - citaDate) / (1000 * 60 * 60);
+
+  let typeKey = null;
+  let statusHint = '';
+
+  if (llegadaDate) {
+    if (llegadaDate > citaDate) {
+      typeKey = 'delay';
+      statusHint = 'Llegó después de la cita.';
+    } else {
+      return null;
+    }
+  } else if (hoursAfterCita >= CONTROL_TOWER_MISSING_EVENT_HOURS) {
+    typeKey = 'missing';
+    statusHint = 'Llegada no registrada después del tiempo esperado.';
+  } else if (hoursUntilCita <= CONTROL_TOWER_RISK_HOURS) {
+    typeKey = 'risk';
+    statusHint = hoursUntilCita < 0 ? 'Cita vencida sin llegada.' : 'Cita próxima sin llegada.';
+  } else {
+    return null;
+  }
+
+  const alertType = CONTROL_TOWER_ALERT_TYPES[typeKey];
+  return {
+    typeKey,
+    typeLabel: alertType.label,
+    priority: alertType.priority,
+    tone: alertType.tone,
+    client: row.cliente || 'Sin cliente',
+    trip: row.trip || 'Sin trip',
+    citaLabel,
+    citaValue: citaValue || 'Sin cita',
+    citaDate,
+    status: row.estado || 'Sin estado',
+    statusHint
+  };
+}
+
+function renderControlTowerAlerts(alerts) {
+  if (!dom.controlTowerAlerts || !dom.controlTowerEmpty) {
+    return;
+  }
+
+  dom.controlTowerAlerts.innerHTML = alerts
+    .map((alert) => {
+      return `
+        <article class="alert-card alert-card--${alert.tone}" role="listitem">
+          <header class="alert-card-header">
+            <span class="alert-badge alert-badge--${alert.tone}">${alert.typeLabel}</span>
+            <span class="alert-cita">${alert.citaLabel}: ${alert.citaValue}</span>
+          </header>
+          <div class="alert-card-body">
+            <div class="alert-meta">
+              <div>
+                <p class="alert-meta-label">Cliente</p>
+                <p class="alert-meta-value">${alert.client}</p>
+              </div>
+              <div>
+                <p class="alert-meta-label">Trip</p>
+                <p class="alert-meta-value">${alert.trip}</p>
+              </div>
+              <div>
+                <p class="alert-meta-label">Estado actual</p>
+                <p class="alert-meta-value">${alert.status}</p>
+              </div>
+            </div>
+            <p class="alert-status-hint">${alert.statusHint}</p>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+
+  dom.controlTowerEmpty.hidden = alerts.length > 0;
+}
+
 function getMexicoDateParts(date) {
   const formatter = new Intl.DateTimeFormat('es-MX', {
     timeZone: MEXICO_TZ,
@@ -1977,6 +2216,10 @@ function matchesClientFilter(row) {
 function applyFilters() {
   if (state.view === KPI_VIEW) {
     renderKpiView();
+    return;
+  }
+  if (state.view === CONTROL_TOWER_VIEW) {
+    renderControlTower();
     return;
   }
 
