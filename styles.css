@@ -924,6 +924,161 @@ textarea:focus-visible,
   text-align: center;
 }
 
+.control-tower-content {
+  display: grid;
+  gap: 16px;
+}
+
+.control-tower-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.control-tower-title {
+  font-size: 20px;
+  margin: 0;
+}
+
+.control-tower-subtitle {
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.control-tower-section {
+  display: grid;
+  gap: 12px;
+}
+
+.control-tower-section-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.control-tower-section-header p {
+  margin-top: 4px;
+}
+
+.control-tower-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.control-tower-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+}
+
+.control-tower-card-title {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.control-tower-card-value {
+  color: var(--primary-dark);
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.control-tower-alerts {
+  display: grid;
+  gap: 12px;
+}
+
+.control-tower-empty {
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+.alert-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.alert-card--danger {
+  border-left: 4px solid var(--danger);
+}
+
+.alert-card--warning {
+  border-left: 4px solid var(--warning);
+}
+
+.alert-card--info {
+  border-left: 4px solid var(--info);
+}
+
+.alert-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.alert-badge {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+
+.alert-badge--danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger-strong);
+}
+
+.alert-badge--warning {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+}
+
+.alert-badge--info {
+  background: rgba(14, 165, 233, 0.18);
+  color: #0369a1;
+}
+
+.alert-cita {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.alert-meta {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.alert-meta-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.alert-meta-value {
+  font-weight: 600;
+  margin: 2px 0 0;
+}
+
+.alert-status-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
 .form-actions {
   display: flex;
   gap: 12px;
