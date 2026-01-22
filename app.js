@@ -139,6 +139,8 @@ const dom = {
   controlTowerActiveModal: null,
   controlTowerActiveList: null,
   controlTowerActiveEmpty: null,
+  controlTowerActiveTitle: null,
+  controlTowerActiveSubtitle: null,
   controlTowerValues: {},
   emptyState: null,
   menuButtons: null,
@@ -385,15 +387,33 @@ function buildLayout() {
                 <p class="control-tower-card-value" data-control-value="active-shipments">0</p>
                 <p class="control-tower-card-hint">Ver detalle</p>
               </article>
-              <article class="control-tower-card">
+              <article
+                class="control-tower-card control-tower-card--interactive"
+                data-control-action="otd-global"
+                role="button"
+                tabindex="0"
+                aria-label="Ver detalle de OTD global"
+              >
                 <p class="control-tower-card-title">% OTD global (rango actual)</p>
                 <p class="control-tower-card-value" data-control-value="otd-global">0%</p>
               </article>
-              <article class="control-tower-card">
+              <article
+                class="control-tower-card control-tower-card--interactive"
+                data-control-action="otp-global"
+                role="button"
+                tabindex="0"
+                aria-label="Ver detalle de OTP global"
+              >
                 <p class="control-tower-card-title">% OTP global (rango actual)</p>
                 <p class="control-tower-card-value" data-control-value="otp-global">0%</p>
               </article>
-              <article class="control-tower-card control-tower-card--priority">
+              <article
+                class="control-tower-card control-tower-card--priority control-tower-card--interactive"
+                data-control-action="alert-shipments"
+                role="button"
+                tabindex="0"
+                aria-label="Ver detalle de envíos con alerta"
+              >
                 <p class="control-tower-card-title">Total de envíos con alerta</p>
                 <p class="control-tower-card-value" data-control-value="alert-shipments">0</p>
               </article>
@@ -425,10 +445,10 @@ function buildLayout() {
       </div>
     </div>
     <div class="modal-backdrop control-tower-active-modal" hidden>
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="active-shipments-title">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="control-tower-detail-title">
         <header class="modal-header">
           <div>
-            <h2 id="active-shipments-title">Envíos activos</h2>
+            <h2 id="control-tower-detail-title">Envíos activos</h2>
             <p class="control-tower-active-subtitle">
               Auditoría rápida de los registros activos en el rango actual.
             </p>
@@ -483,6 +503,8 @@ function buildLayout() {
   dom.controlTowerActiveModal = dom.app.querySelector('.control-tower-active-modal');
   dom.controlTowerActiveList = dom.app.querySelector('.control-tower-active-list');
   dom.controlTowerActiveEmpty = dom.app.querySelector('.control-tower-active-empty');
+  dom.controlTowerActiveTitle = dom.app.querySelector('#control-tower-detail-title');
+  dom.controlTowerActiveSubtitle = dom.app.querySelector('.control-tower-active-subtitle');
   dom.controlTowerValues = {
     activeShipments: dom.app.querySelector('[data-control-value="active-shipments"]'),
     otdGlobal: dom.app.querySelector('[data-control-value="otd-global"]'),
@@ -695,17 +717,19 @@ function bindEvents() {
     });
   }
 
-  if (dom.controlTowerActiveCard) {
-    dom.controlTowerActiveCard.addEventListener('click', () => {
-      openControlTowerActiveModal();
-    });
-
-    dom.controlTowerActiveCard.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') {
-        return;
-      }
-      event.preventDefault();
-      openControlTowerActiveModal();
+  if (dom.controlTowerContent) {
+    const summaryCards = dom.controlTowerContent.querySelectorAll('[data-control-action]');
+    summaryCards.forEach((card) => {
+      card.addEventListener('click', () => {
+        handleControlTowerSummaryAction(card.dataset.controlAction);
+      });
+      card.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+          return;
+        }
+        event.preventDefault();
+        handleControlTowerSummaryAction(card.dataset.controlAction);
+      });
     });
   }
 
@@ -1225,15 +1249,79 @@ function closeTripModal() {
 
 // Modal de auditoría para envíos activos en Control Tower.
 function openControlTowerActiveModal() {
-  if (!dom.controlTowerActiveModal) {
-    return;
-  }
-
   const activeRows = state.controlTowerActiveRows.length
     ? state.controlTowerActiveRows
     : getControlTowerActiveRows();
-  renderControlTowerActiveList(activeRows);
+  openControlTowerDetailModal({
+    title: 'Envíos activos',
+    subtitle: 'Auditoría rápida de los registros activos en el rango actual.',
+    emptyMessage: 'No hay envíos activos',
+    rows: activeRows
+  });
+}
+
+function openControlTowerDetailModal({ title, subtitle, emptyMessage, rows }) {
+  if (!dom.controlTowerActiveModal) {
+    return;
+  }
+  if (dom.controlTowerActiveTitle) {
+    dom.controlTowerActiveTitle.textContent = title;
+  }
+  if (dom.controlTowerActiveSubtitle) {
+    dom.controlTowerActiveSubtitle.textContent = subtitle;
+  }
+  if (dom.controlTowerActiveEmpty) {
+    dom.controlTowerActiveEmpty.textContent = emptyMessage;
+  }
+  renderControlTowerActiveList(rows);
   dom.controlTowerActiveModal.hidden = false;
+}
+
+function openControlTowerKpiModal(kpiKey) {
+  const definition = getKpiDefinition(kpiKey);
+  const rollingRange = getMexicoRollingRange(15);
+  const rows = getControlTowerKpiRows(definition, rollingRange.startDate, rollingRange.endDate);
+  const label = definition.label;
+  openControlTowerDetailModal({
+    title: `Detalle KPI ${label}`,
+    subtitle: `Registros considerados para ${label} en el rango actual.`,
+    emptyMessage: 'No hay registros en el rango actual',
+    rows
+  });
+}
+
+function openControlTowerAlertsModal() {
+  const alerts = state.controlTowerAlerts.length
+    ? state.controlTowerAlerts
+    : buildControlTowerAlerts(getControlTowerActiveRows());
+  const rows = getControlTowerAlertRows(alerts);
+  openControlTowerDetailModal({
+    title: 'Envíos con alerta',
+    subtitle: 'Listado de registros que activan alertas críticas en el rango actual.',
+    emptyMessage: 'No hay envíos con alerta',
+    rows
+  });
+}
+
+function handleControlTowerSummaryAction(action) {
+  if (!action) {
+    return;
+  }
+  if (action === 'active-shipments') {
+    openControlTowerActiveModal();
+    return;
+  }
+  if (action === 'otd-global') {
+    openControlTowerKpiModal('otd');
+    return;
+  }
+  if (action === 'otp-global') {
+    openControlTowerKpiModal('otp');
+    return;
+  }
+  if (action === 'alert-shipments') {
+    openControlTowerAlertsModal();
+  }
 }
 
 function closeControlTowerActiveModal() {
@@ -2109,6 +2197,26 @@ function calculateControlTowerMetrics() {
   };
 }
 
+function getControlTowerKpiRows(definition, startDate, endDate) {
+  return state.data.filter((row) => {
+    const citaDate = row[definition.citaDateKey];
+    return isWithinKpiRange(citaDate, startDate, endDate);
+  });
+}
+
+function getControlTowerAlertRows(alerts) {
+  const uniqueRows = [];
+  const seen = new Set();
+  alerts.forEach((alert) => {
+    if (!alert || !alert.row || seen.has(alert.row)) {
+      return;
+    }
+    seen.add(alert.row);
+    uniqueRows.push(alert.row);
+  });
+  return uniqueRows;
+}
+
 function getControlTowerActiveRows() {
   return state.data.filter((row) => isActiveShipmentForControlTower(row));
 }
@@ -2208,45 +2316,77 @@ function renderControlTowerAlerts(alerts) {
     return;
   }
 
-  dom.controlTowerAlerts.innerHTML = alerts
-    .map((alert, index) => {
+  const indexedAlerts = alerts.map((alert, index) => ({ alert, index }));
+  const orderedTypes = Object.entries(CONTROL_TOWER_ALERT_TYPES)
+    .sort((a, b) => a[1].priority - b[1].priority)
+    .map(([typeKey, typeInfo]) => ({ typeKey, label: typeInfo.label }));
+
+  dom.controlTowerAlerts.innerHTML = orderedTypes
+    .map((typeInfo) => {
+      const groupAlerts = indexedAlerts.filter((item) => item.alert.typeKey === typeInfo.typeKey);
+      if (!groupAlerts.length) {
+        return '';
+      }
       return `
-        <article
-          class="alert-card alert-card--${alert.tone} alert-card--${alert.typeKey}"
-          role="listitem"
-          tabindex="0"
-          data-alert-index="${index}"
-        >
-          <div class="alert-card-main">
-            <div class="alert-primary">
-              <span class="alert-badge alert-badge--${alert.tone}">${alert.typeLabel}</span>
-              <div class="alert-core">
-                <p class="alert-core-label">Cliente</p>
-                <p class="alert-core-value">${alert.client}</p>
-              </div>
-              <div class="alert-core">
-                <p class="alert-core-label">Trip</p>
-                <p class="alert-core-value">${alert.trip}</p>
-              </div>
-            </div>
-            <p class="alert-problem">${alert.statusHint}</p>
+        <div class="control-tower-alert-group">
+          <div class="control-tower-alert-group-header">
+            <p class="control-tower-alert-group-title">${typeInfo.label}</p>
+            <span class="control-tower-alert-group-count">${groupAlerts.length}</span>
           </div>
-          <div class="alert-secondary">
-            <div>
-              <p class="alert-meta-label">Estado actual</p>
-              <p class="alert-meta-value">${alert.status}</p>
-            </div>
-            <div>
-              <p class="alert-meta-label">${alert.citaLabel}</p>
-              <p class="alert-meta-value">${alert.citaValue}</p>
-            </div>
+          <div class="control-tower-alert-group-list" role="list">
+            ${groupAlerts
+              .map(({ alert, index }) => {
+                return `
+                  <article
+                    class="alert-card alert-card--${alert.tone} alert-card--${alert.typeKey}"
+                    role="listitem"
+                    tabindex="0"
+                    data-alert-index="${index}"
+                  >
+                    <p class="alert-scan-line">${formatControlTowerScanLine(alert)}</p>
+                    <div class="alert-card-main">
+                      <div class="alert-primary">
+                        <span class="alert-badge alert-badge--${alert.tone}">${alert.typeLabel}</span>
+                        <div class="alert-core">
+                          <p class="alert-core-label">Cliente</p>
+                          <p class="alert-core-value">${alert.client}</p>
+                        </div>
+                        <div class="alert-core">
+                          <p class="alert-core-label">Trip</p>
+                          <p class="alert-core-value">${alert.trip}</p>
+                        </div>
+                      </div>
+                      <p class="alert-problem">${alert.statusHint}</p>
+                    </div>
+                    <div class="alert-secondary">
+                      <div>
+                        <p class="alert-meta-label">Estado actual</p>
+                        <p class="alert-meta-value">${alert.status}</p>
+                      </div>
+                      <div>
+                        <p class="alert-meta-label">${alert.citaLabel}</p>
+                        <p class="alert-meta-value">${alert.citaValue}</p>
+                      </div>
+                    </div>
+                  </article>
+                `;
+              })
+              .join('')}
           </div>
-        </article>
+        </div>
       `;
     })
     .join('');
 
   dom.controlTowerEmpty.hidden = alerts.length > 0;
+}
+
+function formatControlTowerScanLine(alert) {
+  const client = alert.client || 'Sin cliente';
+  const trip = alert.trip || 'Sin trip';
+  const citaLabel = alert.citaLabel || 'Cita';
+  const citaValue = alert.citaValue || 'Sin cita';
+  return `${client} · Trip ${trip} · ${citaLabel} ${citaValue}`;
 }
 
 // Renderiza el listado detallado de envíos activos en el modal.

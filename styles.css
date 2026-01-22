@@ -1036,13 +1036,45 @@ textarea:focus-visible,
 
 .control-tower-alerts {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 
 .control-tower-empty {
   color: var(--text-muted);
   margin: 0;
   text-align: center;
+}
+
+.control-tower-alert-group {
+  display: grid;
+  gap: 12px;
+}
+
+.control-tower-alert-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.control-tower-alert-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.control-tower-alert-group-count {
+  background: var(--border-subtle);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+}
+
+.control-tower-alert-group-list {
+  display: grid;
+  gap: 12px;
 }
 
 .alert-card {
@@ -1052,7 +1084,7 @@ textarea:focus-visible,
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
   display: grid;
-  gap: 12px;
+  gap: 10px;
   padding: 16px;
 }
 
@@ -1080,6 +1112,12 @@ textarea:focus-visible,
 .alert-card-main {
   display: grid;
   gap: 8px;
+}
+
+.alert-scan-line {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0;
 }
 
 .alert-primary {
