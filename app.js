@@ -375,7 +375,7 @@ function buildLayout() {
             </div>
             <div class="control-tower-summary">
               <article
-                class="control-tower-card control-tower-card--interactive"
+                class="control-tower-card control-tower-card--interactive control-tower-card--secondary"
                 data-control-action="active-shipments"
                 role="button"
                 tabindex="0"
@@ -393,7 +393,7 @@ function buildLayout() {
                 <p class="control-tower-card-title">% OTP global (rango actual)</p>
                 <p class="control-tower-card-value" data-control-value="otp-global">0%</p>
               </article>
-              <article class="control-tower-card">
+              <article class="control-tower-card control-tower-card--priority">
                 <p class="control-tower-card-title">Total de envíos con alerta</p>
                 <p class="control-tower-card-value" data-control-value="alert-shipments">0</p>
               </article>
@@ -2040,6 +2040,7 @@ function renderControlTower() {
     return;
   }
 
+  const complianceThreshold = 90;
   const metrics = calculateControlTowerMetrics();
   state.controlTowerAlerts = metrics.alerts;
   state.controlTowerActiveRows = metrics.activeRows;
@@ -2050,17 +2051,37 @@ function renderControlTower() {
     dom.controlTowerValues.otdGlobal.textContent = metrics.otd.total === 0
       ? '0%'
       : formatPercentage(metrics.otd.complianceRate);
+    toggleComplianceHighlight(
+      dom.controlTowerValues.otdGlobal,
+      metrics.otd.complianceRate,
+      metrics.otd.total,
+      complianceThreshold
+    );
   }
   if (dom.controlTowerValues.otpGlobal) {
     dom.controlTowerValues.otpGlobal.textContent = metrics.otp.total === 0
       ? '0%'
       : formatPercentage(metrics.otp.complianceRate);
+    toggleComplianceHighlight(
+      dom.controlTowerValues.otpGlobal,
+      metrics.otp.complianceRate,
+      metrics.otp.total,
+      complianceThreshold
+    );
   }
   if (dom.controlTowerValues.alertShipments) {
     dom.controlTowerValues.alertShipments.textContent = metrics.alerts.length.toString();
   }
 
   renderControlTowerAlerts(metrics.alerts);
+}
+
+function toggleComplianceHighlight(element, complianceRate, total, threshold) {
+  if (!element) {
+    return;
+  }
+  const shouldHighlight = total > 0 && complianceRate < threshold;
+  element.classList.toggle('control-tower-card-value--alert', shouldHighlight);
 }
 
 function calculateControlTowerMetrics() {
@@ -2191,31 +2212,34 @@ function renderControlTowerAlerts(alerts) {
     .map((alert, index) => {
       return `
         <article
-          class="alert-card alert-card--${alert.tone}"
+          class="alert-card alert-card--${alert.tone} alert-card--${alert.typeKey}"
           role="listitem"
           tabindex="0"
           data-alert-index="${index}"
         >
-          <header class="alert-card-header">
-            <span class="alert-badge alert-badge--${alert.tone}">${alert.typeLabel}</span>
-            <span class="alert-cita">${alert.citaLabel}: ${alert.citaValue}</span>
-          </header>
-          <div class="alert-card-body">
-            <div class="alert-meta">
-              <div>
-                <p class="alert-meta-label">Cliente</p>
-                <p class="alert-meta-value">${alert.client}</p>
+          <div class="alert-card-main">
+            <div class="alert-primary">
+              <span class="alert-badge alert-badge--${alert.tone}">${alert.typeLabel}</span>
+              <div class="alert-core">
+                <p class="alert-core-label">Cliente</p>
+                <p class="alert-core-value">${alert.client}</p>
               </div>
-              <div>
-                <p class="alert-meta-label">Trip</p>
-                <p class="alert-meta-value">${alert.trip}</p>
-              </div>
-              <div>
-                <p class="alert-meta-label">Estado actual</p>
-                <p class="alert-meta-value">${alert.status}</p>
+              <div class="alert-core">
+                <p class="alert-core-label">Trip</p>
+                <p class="alert-core-value">${alert.trip}</p>
               </div>
             </div>
-            <p class="alert-status-hint">${alert.statusHint}</p>
+            <p class="alert-problem">${alert.statusHint}</p>
+          </div>
+          <div class="alert-secondary">
+            <div>
+              <p class="alert-meta-label">Estado actual</p>
+              <p class="alert-meta-value">${alert.status}</p>
+            </div>
+            <div>
+              <p class="alert-meta-label">${alert.citaLabel}</p>
+              <p class="alert-meta-value">${alert.citaValue}</p>
+            </div>
           </div>
         </article>
       `;
