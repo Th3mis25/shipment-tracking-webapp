@@ -51,9 +51,9 @@ const KPI_DEFINITIONS = {
   }
 };
 const CONTROL_TOWER_ALERT_TYPES = {
-  delay: { label: 'Retraso confirmado', priority: 1, tone: 'danger' },
-  risk: { label: 'Riesgo de retraso', priority: 2, tone: 'warning' },
-  missing: { label: 'Falta de evento', priority: 3, tone: 'info' }
+  risk: { label: 'Riesgo de retraso', priority: 1, tone: 'warning' },
+  missing: { label: 'Falta de evento', priority: 2, tone: 'info' },
+  delay: { label: 'Retraso confirmado', priority: 3, tone: 'danger' }
 };
 const DAILY_TABLE_COLUMNS = [
   { key: 'cliente', label: 'Cliente' },
@@ -422,7 +422,7 @@ function buildLayout() {
           <section class="control-tower-section">
             <div class="control-tower-section-header">
               <h3>Alertas críticas</h3>
-              <p>Prioridad: retraso confirmado, riesgo de retraso y falta de evento.</p>
+              <p>Prioridad: riesgo de retraso, falta de evento y retraso confirmado.</p>
             </div>
             <div class="control-tower-alerts" role="list"></div>
             <p class="control-tower-empty" hidden>No hay alertas críticas en este momento.</p>
