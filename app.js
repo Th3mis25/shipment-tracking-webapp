@@ -2032,6 +2032,7 @@ function renderKpiView() {
     dom.kpiGeneralValue.textContent = results.total === 0
       ? '0%'
       : formatPercentage(results.complianceRate);
+    toggleComplianceHighlight(dom.kpiGeneralValue, results.complianceRate, results.total);
   }
 
   renderKpiTable(results.byClient);
@@ -2164,12 +2165,24 @@ function renderControlTower() {
   renderControlTowerAlerts(metrics.alerts);
 }
 
-function toggleComplianceHighlight(element, complianceRate, total, threshold) {
+function toggleComplianceHighlight(element, complianceRate, total, threshold = 90) {
   if (!element) {
     return;
   }
-  const shouldHighlight = total > 0 && complianceRate < threshold;
-  element.classList.toggle('control-tower-card-value--alert', shouldHighlight);
+  const classList = element.classList;
+  classList.remove('status-value--danger', 'status-value--warning', 'status-value--success');
+  if (total <= 0) {
+    return;
+  }
+  if (complianceRate < threshold) {
+    classList.add('status-value--danger');
+    return;
+  }
+  if (complianceRate < 95) {
+    classList.add('status-value--warning');
+    return;
+  }
+  classList.add('status-value--success');
 }
 
 function calculateControlTowerMetrics() {
