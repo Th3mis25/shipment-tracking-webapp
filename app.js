@@ -2240,16 +2240,17 @@ function buildControlTowerAlerts(rows) {
       citaLabel: 'Cita carga',
       now
     });
-    if (cargaAlert) {
-      alerts.push(cargaAlert);
-    }
-
     const entregaAlert = createControlTowerAlert(row, {
       citaKey: 'cita entrega',
       llegadaKey: 'llegada entrega',
       citaLabel: 'Cita entrega',
       now
     });
+    const bothDelays = cargaAlert && entregaAlert && cargaAlert.typeKey === 'delay' && entregaAlert.typeKey === 'delay';
+
+    if (!bothDelays && cargaAlert) {
+      alerts.push(cargaAlert);
+    }
     if (entregaAlert) {
       alerts.push(entregaAlert);
     }
@@ -2280,7 +2281,9 @@ function createControlTowerAlert(row, { citaKey, llegadaKey, citaLabel, now }) {
   if (llegadaDate) {
     if (llegadaDate > citaDate) {
       typeKey = 'delay';
-      statusHint = 'Llegó después de la cita.';
+      statusHint = citaKey === 'cita entrega'
+        ? 'Llegó después de la cita de entrega.'
+        : 'Llegó después de la cita de carga.';
     } else {
       return null;
     }
