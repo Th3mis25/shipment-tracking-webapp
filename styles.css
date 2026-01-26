@@ -388,6 +388,10 @@ textarea:focus-visible,
   min-width: 200px;
 }
 
+.filter-panel-risk {
+  min-width: 160px;
+}
+
 .filter-field {
   display: grid;
   gap: 6px;
@@ -633,6 +637,36 @@ textarea:focus-visible,
   background: rgba(126, 147, 168, 0.12);
   border-color: rgba(126, 147, 168, 0.4);
   color: var(--status-default);
+}
+
+.risk-badge {
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  padding: 4px 10px;
+  text-transform: uppercase;
+}
+
+.risk-badge--low {
+  background: var(--status-success-bg);
+  border-color: rgba(63, 185, 132, 0.4);
+  color: var(--success);
+}
+
+.risk-badge--medium {
+  background: var(--status-warning-bg);
+  border-color: rgba(240, 180, 41, 0.45);
+  color: var(--warning);
+}
+
+.risk-badge--high {
+  background: var(--status-danger-bg);
+  border-color: rgba(229, 83, 83, 0.5);
+  color: var(--danger);
 }
 
 .card-list {
@@ -1102,6 +1136,52 @@ textarea:focus-visible,
 .control-tower-alert-group-list {
   display: grid;
   gap: 12px;
+}
+
+.control-tower-risk-list {
+  display: grid;
+  gap: 12px;
+}
+
+.control-tower-risk-empty {
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
+.control-tower-risk-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.control-tower-risk-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.control-tower-risk-body {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.control-tower-risk-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0 0 4px;
+  text-transform: uppercase;
+}
+
+.control-tower-risk-value {
+  margin: 0;
+  font-weight: 600;
 }
 
 .alert-card {
