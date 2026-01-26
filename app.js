@@ -2175,6 +2175,85 @@ function shouldEscalateRisk(performance, isOtpEligible) {
   return hasLowOtd || hasLowOtp;
 }
 
+function getRiskRelevantCita(row) {
+  const citaCargaDate = row.citaCargaDate || parseDateTimeValue(row['cita carga']);
+  const citaEntregaDate = row.citaEntregaDate || parseDateTimeValue(row['cita entrega']);
+  const citaCargaValue = row['cita carga'];
+  const citaEntregaValue = row['cita entrega'];
+  const hasCarga = Boolean(citaCargaDate);
+  const hasEntrega = Boolean(citaEntregaDate);
+
+  if (hasCarga && !hasEntrega) {
+    return {
+      label: 'Cita carga',
+      value: citaCargaValue || 'Sin cita',
+      date: citaCargaDate,
+      type: 'carga'
+    };
+  }
+
+  if (hasEntrega && !hasCarga) {
+    return {
+      label: 'Cita entrega',
+      value: citaEntregaValue || 'Sin cita',
+      date: citaEntregaDate,
+      type: 'entrega'
+    };
+  }
+
+  if (!hasCarga && !hasEntrega) {
+    return { label: 'Cita', value: 'Sin cita', date: null, type: null };
+  }
+
+  const isOtpEligible = !shouldExcludeFromOtp(row);
+  return isOtpEligible
+    ? {
+      label: 'Cita carga',
+      value: citaCargaValue || 'Sin cita',
+      date: citaCargaDate,
+      type: 'carga'
+    }
+    : {
+      label: 'Cita entrega',
+      value: citaEntregaValue || 'Sin cita',
+      date: citaEntregaDate,
+      type: 'entrega'
+    };
+}
+
+function getCitaDescriptor(label, type) {
+  if (type) {
+    return type;
+  }
+  if (!label) {
+    return 'cita';
+  }
+  const normalized = label.toString().trim().toLowerCase();
+  if (normalized.includes('carga')) {
+    return 'carga';
+  }
+  if (normalized.includes('entrega')) {
+    return 'entrega';
+  }
+  return 'cita';
+}
+
+function formatRelativeCitaMessage({ citaLabel, citaType, citaDate, now = new Date() }) {
+  if (!citaDate) {
+    return '';
+  }
+  const diffMs = citaDate - now;
+  const totalMinutes = Math.max(0, Math.floor(Math.abs(diffMs) / (1000 * 60)));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const descriptor = getCitaDescriptor(citaLabel, citaType);
+
+  if (diffMs >= 0) {
+    return `Faltan ${hours}h ${minutes}m para la cita de ${descriptor}`;
+  }
+  return `Cita de ${descriptor} vencida hace ${hours}h ${minutes}m`;
+}
+
 /**
  * Calcula el riesgo de incumplimiento usando reglas determinísticas.
  * - Embarques activos: usa cita carga (OTP) o cita entrega (OTD).
@@ -2183,10 +2262,8 @@ function shouldEscalateRisk(performance, isOtpEligible) {
 function calculateRisk(row, { now = new Date(), performanceByClient = new Map() } = {}) {
   const statusValue = getRowStatusValue(row);
   const isFinal = isFinalShipmentStatus(statusValue);
-  const isOtpEligible = !shouldExcludeFromOtp(row);
-  const citaLabel = isOtpEligible ? 'Cita carga' : 'Cita entrega';
-  const citaDate = isOtpEligible ? row.citaCargaDate : row.citaEntregaDate;
-  const citaValue = isOtpEligible ? row['cita carga'] : row['cita entrega'];
+  const citaInfo = getRiskRelevantCita(row);
+  const citaDate = citaInfo.date;
   let hoursUntilCita = null;
   let level = 'low';
 
@@ -2203,6 +2280,7 @@ function calculateRisk(row, { now = new Date(), performanceByClient = new Map() 
 
   const clientKey = normalizeClientName(row.cliente);
   const performance = performanceByClient.get(clientKey);
+  const isOtpEligible = !shouldExcludeFromOtp(row);
   if (shouldEscalateRisk(performance, isOtpEligible)) {
     const currentIndex = RISK_LEVELS.indexOf(level);
     const nextIndex = Math.min(currentIndex + 1, RISK_LEVELS.length - 1);
@@ -2212,8 +2290,10 @@ function calculateRisk(row, { now = new Date(), performanceByClient = new Map() 
   return {
     level,
     label: RISK_LABELS[level] || level,
-    citaLabel,
-    citaValue: citaValue || 'Sin cita',
+    citaLabel: citaInfo.label,
+    citaValue: citaInfo.value || 'Sin cita',
+    citaDate: citaInfo.date,
+    citaType: citaInfo.type,
     hoursUntilCita,
     isActive: !isFinal
   };
@@ -2657,6 +2737,12 @@ function renderControlTowerRisk(rows) {
       const client = row.cliente || 'Cliente sin nombre';
       const trip = row.trip || 'Sin trip';
       const status = row.estado || 'Sin estado';
+      const riskTimeMessage = formatRelativeCitaMessage({
+        citaLabel: risk.citaLabel,
+        citaType: risk.citaType,
+        citaDate: risk.citaDate,
+        now: riskContext.now
+      });
       return `
         <article class="control-tower-risk-card" role="listitem">
           <header class="control-tower-risk-header">
@@ -2664,7 +2750,10 @@ function renderControlTowerRisk(rows) {
               <p class="control-tower-risk-label">Cliente</p>
               <p class="control-tower-risk-value">${client}</p>
             </div>
-            ${renderRiskBadge(risk)}
+            <div class="control-tower-risk-badge-group">
+              ${renderRiskBadge(risk)}
+              <p class="control-tower-risk-time">${riskTimeMessage}</p>
+            </div>
           </header>
           <div class="control-tower-risk-body">
             <div>

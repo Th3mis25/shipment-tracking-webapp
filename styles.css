@@ -1166,6 +1166,20 @@ textarea:focus-visible,
   gap: 12px;
 }
 
+.control-tower-risk-badge-group {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.control-tower-risk-time {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0;
+  text-align: right;
+}
+
 .control-tower-risk-body {
   display: grid;
   gap: 12px;
