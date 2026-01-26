@@ -18,6 +18,17 @@ const THEME_LIGHT = 'light';
 const BASE_STATUS_FILTERS = ['all', 'delivered', 'drop', 'cancelled'];
 const CONTROL_TOWER_RISK_HOURS = 4;
 const CONTROL_TOWER_MISSING_EVENT_HOURS = 12;
+const RISK_LEVELS = ['low', 'medium', 'high'];
+const RISK_LABELS = {
+  low: 'Bajo',
+  medium: 'Medio',
+  high: 'Alto'
+};
+const RISK_PRIORITY = {
+  low: 1,
+  medium: 2,
+  high: 3
+};
 const ALLOWED_OVERDUE_STATUSES = new Set([
   'drop',
   'live',
@@ -31,6 +42,16 @@ const DEFAULT_TABLE_COLUMNS = [
   { key: 'cliente', label: 'Cliente' },
   { key: 'estado', label: 'Estado' },
   { key: 'trip', label: 'Trip' },
+  { key: 'caja', label: 'Caja' },
+  { key: 'tr-mx', label: 'TR-MX' },
+  { key: 'tr-usa', label: 'TR-USA' },
+  { key: 'actions', label: 'Acciones' }
+];
+const ALL_TABLE_COLUMNS = [
+  { key: 'cliente', label: 'Cliente' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'trip', label: 'Trip' },
+  { key: 'risk', label: 'Riesgo' },
   { key: 'caja', label: 'Caja' },
   { key: 'tr-mx', label: 'TR-MX' },
   { key: 'tr-usa', label: 'TR-USA' },
@@ -97,6 +118,7 @@ const state = {
   clientOptions: [],
   dateStartFilter: null,
   dateEndFilter: null,
+  riskFilter: 'all',
   view: DEFAULT_VIEW,
   kpiType: 'otd',
   kpiStartDate: null,
@@ -130,6 +152,7 @@ const dom = {
   dateStartInput: null,
   dateEndInput: null,
   clientSelect: null,
+  riskSelect: null,
   kpiGeneralValue: null,
   kpiActiveLabel: null,
   kpiTableBody: null,
@@ -137,6 +160,8 @@ const dom = {
   controlTowerContent: null,
   controlTowerAlerts: null,
   controlTowerEmpty: null,
+  controlTowerRiskList: null,
+  controlTowerRiskEmpty: null,
   controlTowerActiveCard: null,
   controlTowerActiveModal: null,
   controlTowerActiveList: null,
@@ -299,6 +324,29 @@ function buildLayout() {
                 </div>
               </div>
             </div>
+            <div class="filter-block" data-filter="risk">
+              <button
+                type="button"
+                class="filter-toggle"
+                data-filter-toggle="risk"
+                aria-expanded="false"
+                aria-controls="filter-risk-panel"
+              >
+                <span class="filter-toggle-icon" aria-hidden="true">⚠️</span>
+                <span class="filter-toggle-text">Riesgo</span>
+              </button>
+              <div class="filter-panel filter-panel-risk" id="filter-risk-panel" data-filter-panel="risk">
+                <div class="filter-field">
+                  <label for="filter-risk">Riesgo</label>
+                  <select id="filter-risk">
+                    <option value="all">Todos</option>
+                    <option value="high">Alto</option>
+                    <option value="medium">Medio</option>
+                    <option value="low">Bajo</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="filter-chips" role="list"></div>
         </div>
@@ -429,6 +477,14 @@ function buildLayout() {
             <div class="control-tower-alerts" role="list"></div>
             <p class="control-tower-empty" hidden>No hay alertas críticas en este momento.</p>
           </section>
+          <section class="control-tower-section">
+            <div class="control-tower-section-header">
+              <h3>Embarques en riesgo</h3>
+              <p>Embarques activos con riesgo medio o alto según la cita relevante.</p>
+            </div>
+            <div class="control-tower-risk-list" role="list"></div>
+            <p class="control-tower-risk-empty" hidden>No hay embarques en riesgo en este momento.</p>
+          </section>
         </div>
       </section>
     </div>
@@ -494,6 +550,7 @@ function buildLayout() {
   dom.dateStartInput = dom.app.querySelector('#filter-date-start');
   dom.dateEndInput = dom.app.querySelector('#filter-date-end');
   dom.clientSelect = dom.app.querySelector('#filter-client');
+  dom.riskSelect = dom.app.querySelector('#filter-risk');
   dom.kpiGeneralValue = dom.app.querySelector('#kpi-general');
   dom.kpiActiveLabel = dom.app.querySelector('#kpi-active-label');
   dom.kpiTableBody = dom.app.querySelector('#kpi-table-body');
@@ -501,6 +558,8 @@ function buildLayout() {
   dom.controlTowerContent = dom.app.querySelector('.control-tower-content');
   dom.controlTowerAlerts = dom.app.querySelector('.control-tower-alerts');
   dom.controlTowerEmpty = dom.app.querySelector('.control-tower-empty');
+  dom.controlTowerRiskList = dom.app.querySelector('.control-tower-risk-list');
+  dom.controlTowerRiskEmpty = dom.app.querySelector('.control-tower-risk-empty');
   dom.controlTowerActiveCard = dom.app.querySelector('[data-control-action="active-shipments"]');
   dom.controlTowerActiveModal = dom.app.querySelector('.control-tower-active-modal');
   dom.controlTowerActiveList = dom.app.querySelector('.control-tower-active-list');
@@ -536,6 +595,7 @@ function buildLayout() {
   updateStatusOptions();
   renderStatusFilters([]);
   updateClientOptions();
+  renderRiskFilter();
 }
 
 // Enlaza eventos de interacción básicos.
@@ -614,6 +674,13 @@ function bindEvents() {
   if (dom.clientSelect) {
     dom.clientSelect.addEventListener('change', (event) => {
       state.clientFilter = event.target.value || 'all';
+      applyFilters();
+    });
+  }
+
+  if (dom.riskSelect) {
+    dom.riskSelect.addEventListener('change', (event) => {
+      state.riskFilter = event.target.value || 'all';
       applyFilters();
     });
   }
@@ -1092,6 +1159,9 @@ function renderTable(data) {
           if (column.key === 'estado') {
             return `<td>${renderStatusChip(row.estado)}</td>`;
           }
+          if (column.key === 'risk') {
+            return `<td>${renderRiskBadge(row.risk)}</td>`;
+          }
           if (column.key === 'actions') {
             return `<td>${renderRowActions(index)}</td>`;
           }
@@ -1123,7 +1193,9 @@ function renderTableHeader(columns) {
 function getTableColumns() {
   return state.view === DAILY_VIEW || state.view === WEEKLY_PROGRAM_VIEW
     ? DAILY_TABLE_COLUMNS
-    : DEFAULT_TABLE_COLUMNS;
+    : state.view === ALL_VIEW
+      ? ALL_TABLE_COLUMNS
+      : DEFAULT_TABLE_COLUMNS;
 }
 
 function renderTripCell(tripValue, index) {
@@ -1158,6 +1230,20 @@ function renderStatusChip(statusValue) {
   return `
     <span class="status-chip ${statusClass}">
       ${label}
+    </span>
+  `;
+}
+
+function renderRiskBadge(risk, { compact = false } = {}) {
+  if (!risk || !risk.level) {
+    return '-';
+  }
+  const label = RISK_LABELS[risk.level] || risk.level;
+  const emoji = risk.level === 'high' ? '🔴' : risk.level === 'medium' ? '🟡' : '🟢';
+  const text = compact ? `${emoji} ${label}` : `${emoji} ${label}`;
+  return `
+    <span class="risk-badge risk-badge--${risk.level}">
+      ${text}
     </span>
   `;
 }
@@ -1198,6 +1284,8 @@ function renderCards(data) {
       const trMx = row['tr-mx'];
       const trUsa = row['tr-usa'];
       const citaCarga = row['cita carga'];
+      const showRisk = state.view === ALL_VIEW;
+      const riskBadge = showRisk ? renderRiskBadge(row.risk, { compact: true }) : '';
       return `
         <article class="card" role="listitem">
           <header class="card-header">
@@ -1207,6 +1295,7 @@ function renderCards(data) {
             </div>
             <div class="card-header-actions">
               ${renderStatusChip(row.estado)}
+              ${riskBadge}
               <button type="button" class="primary-button card-view-button" data-row-index="${index}" aria-label="Ver detalle">
                 Ver
               </button>
@@ -1879,6 +1968,13 @@ function renderClientOptions() {
   dom.clientSelect.value = state.clientFilter;
 }
 
+function renderRiskFilter() {
+  if (!dom.riskSelect) {
+    return;
+  }
+  dom.riskSelect.value = state.riskFilter;
+}
+
 function renderStatusFilters(data) {
   if (!dom.filterContainer) {
     return;
@@ -2015,6 +2111,112 @@ function shouldExcludeFromOtp(row) {
     return false;
   }
   return OTP_EXCLUDED_CLIENTS.has(clientName);
+}
+
+function buildClientPerformanceMap() {
+  const otdResults = calculateKpiResults(KPI_DEFINITIONS.otd, null, null);
+  const otpResults = calculateKpiResults(KPI_DEFINITIONS.otp, null, null);
+  const performanceMap = new Map();
+
+  otdResults.byClient.forEach((row) => {
+    const key = normalizeClientName(row.client);
+    if (!key) {
+      return;
+    }
+    performanceMap.set(key, {
+      otdRate: row.rate,
+      otdTotal: row.total,
+      otpRate: null,
+      otpTotal: 0
+    });
+  });
+
+  otpResults.byClient.forEach((row) => {
+    const key = normalizeClientName(row.client);
+    if (!key) {
+      return;
+    }
+    const current = performanceMap.get(key) || {
+      otdRate: null,
+      otdTotal: 0,
+      otpRate: null,
+      otpTotal: 0
+    };
+    performanceMap.set(key, {
+      ...current,
+      otpRate: row.rate,
+      otpTotal: row.total
+    });
+  });
+
+  return performanceMap;
+}
+
+function getRiskContext() {
+  return {
+    now: new Date(),
+    performanceByClient: buildClientPerformanceMap()
+  };
+}
+
+function isFinalShipmentStatus(statusValue) {
+  if (!statusValue) {
+    return false;
+  }
+  return statusValue.includes('delivered') || statusValue.includes('at destination');
+}
+
+function shouldEscalateRisk(performance, isOtpEligible) {
+  if (!performance) {
+    return false;
+  }
+  const hasLowOtd = performance.otdTotal > 0 && performance.otdRate < 70;
+  const hasLowOtp = isOtpEligible && performance.otpTotal > 0 && performance.otpRate < 70;
+  return hasLowOtd || hasLowOtp;
+}
+
+/**
+ * Calcula el riesgo de incumplimiento usando reglas determinísticas.
+ * - Embarques activos: usa cita carga (OTP) o cita entrega (OTD).
+ * - Riesgo base según horas restantes y ajuste si OTD/OTP < 70%.
+ */
+function calculateRisk(row, { now = new Date(), performanceByClient = new Map() } = {}) {
+  const statusValue = getRowStatusValue(row);
+  const isFinal = isFinalShipmentStatus(statusValue);
+  const isOtpEligible = !shouldExcludeFromOtp(row);
+  const citaLabel = isOtpEligible ? 'Cita carga' : 'Cita entrega';
+  const citaDate = isOtpEligible ? row.citaCargaDate : row.citaEntregaDate;
+  const citaValue = isOtpEligible ? row['cita carga'] : row['cita entrega'];
+  let hoursUntilCita = null;
+  let level = 'low';
+
+  if (!isFinal && citaDate) {
+    hoursUntilCita = (citaDate - now) / (1000 * 60 * 60);
+    if (hoursUntilCita <= 4) {
+      level = 'high';
+    } else if (hoursUntilCita <= 12) {
+      level = 'medium';
+    } else {
+      level = 'low';
+    }
+  }
+
+  const clientKey = normalizeClientName(row.cliente);
+  const performance = performanceByClient.get(clientKey);
+  if (shouldEscalateRisk(performance, isOtpEligible)) {
+    const currentIndex = RISK_LEVELS.indexOf(level);
+    const nextIndex = Math.min(currentIndex + 1, RISK_LEVELS.length - 1);
+    level = RISK_LEVELS[nextIndex];
+  }
+
+  return {
+    level,
+    label: RISK_LABELS[level] || level,
+    citaLabel,
+    citaValue: citaValue || 'Sin cita',
+    hoursUntilCita,
+    isActive: !isFinal
+  };
 }
 
 function isWithinKpiRange(citaDate, startDate, endDate) {
@@ -2189,6 +2391,7 @@ function renderControlTower() {
   }
 
   renderControlTowerAlerts(metrics.alerts);
+  renderControlTowerRisk(metrics.activeRows);
 }
 
 function toggleComplianceHighlight(element, complianceRate, total, threshold = 90) {
@@ -2421,6 +2624,66 @@ function renderControlTowerAlerts(alerts) {
     .join('');
 
   dom.controlTowerEmpty.hidden = alerts.length > 0;
+}
+
+function renderControlTowerRisk(rows) {
+  if (!dom.controlTowerRiskList || !dom.controlTowerRiskEmpty) {
+    return;
+  }
+
+  const riskContext = getRiskContext();
+  const riskRows = rows
+    .map((row) => ({ row, risk: calculateRisk(row, riskContext) }))
+    .filter(({ risk }) => risk.isActive && (risk.level === 'high' || risk.level === 'medium'))
+    .sort((a, b) => {
+      const priorityDiff = RISK_PRIORITY[b.risk.level] - RISK_PRIORITY[a.risk.level];
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+      const hoursA = a.risk.hoursUntilCita ?? Number.POSITIVE_INFINITY;
+      const hoursB = b.risk.hoursUntilCita ?? Number.POSITIVE_INFINITY;
+      return hoursA - hoursB;
+    });
+
+  if (!riskRows.length) {
+    dom.controlTowerRiskList.innerHTML = '';
+    dom.controlTowerRiskEmpty.hidden = false;
+    return;
+  }
+
+  dom.controlTowerRiskEmpty.hidden = true;
+  dom.controlTowerRiskList.innerHTML = riskRows
+    .map(({ row, risk }) => {
+      const client = row.cliente || 'Cliente sin nombre';
+      const trip = row.trip || 'Sin trip';
+      const status = row.estado || 'Sin estado';
+      return `
+        <article class="control-tower-risk-card" role="listitem">
+          <header class="control-tower-risk-header">
+            <div>
+              <p class="control-tower-risk-label">Cliente</p>
+              <p class="control-tower-risk-value">${client}</p>
+            </div>
+            ${renderRiskBadge(risk)}
+          </header>
+          <div class="control-tower-risk-body">
+            <div>
+              <p class="control-tower-risk-label">Trip</p>
+              <p class="control-tower-risk-value">${trip}</p>
+            </div>
+            <div>
+              <p class="control-tower-risk-label">Estado actual</p>
+              <p class="control-tower-risk-value">${status}</p>
+            </div>
+            <div>
+              <p class="control-tower-risk-label">${risk.citaLabel}</p>
+              <p class="control-tower-risk-value">${risk.citaValue}</p>
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
 }
 
 function formatControlTowerScanLine(alert) {
@@ -2723,7 +2986,17 @@ function applyFilters() {
     );
   }
 
-  state.filtered = [...filteredData];
+  const riskContext = getRiskContext();
+  let enrichedData = filteredData.map((row) => ({
+    ...row,
+    risk: calculateRisk(row, riskContext)
+  }));
+
+  if (state.view === ALL_VIEW && state.riskFilter !== 'all') {
+    enrichedData = enrichedData.filter((row) => row.risk.level === state.riskFilter);
+  }
+
+  state.filtered = [...enrichedData];
   state.filtered.sort((a, b) => {
     const dateA = a.citaCargaDate;
     const dateB = b.citaCargaDate;
