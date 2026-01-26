@@ -50,6 +50,8 @@ const KPI_DEFINITIONS = {
     citaDateKey: 'citaCargaDate'
   }
 };
+// Clientes excluidos del cálculo OTP (no se consideran en numerador ni denominador).
+const OTP_EXCLUDED_CLIENTS = new Set(['kone', 'prebeo']);
 const CONTROL_TOWER_ALERT_TYPES = {
   risk: { label: 'Riesgo de retraso', priority: 1, tone: 'warning' },
   missing: { label: 'Falta de evento', priority: 2, tone: 'info' },
@@ -1996,6 +1998,25 @@ function getKpiDefinition(type) {
   return KPI_DEFINITIONS[type] || KPI_DEFINITIONS.otd;
 }
 
+function normalizeClientName(value) {
+  if (!value) {
+    return '';
+  }
+  return value.toString().trim().toLowerCase();
+}
+
+function isOtpDefinition(definition) {
+  return definition === KPI_DEFINITIONS.otp;
+}
+
+function shouldExcludeFromOtp(row) {
+  const clientName = normalizeClientName(row.cliente);
+  if (!clientName) {
+    return false;
+  }
+  return OTP_EXCLUDED_CLIENTS.has(clientName);
+}
+
 function isWithinKpiRange(citaDate, startDate, endDate) {
   if (!citaDate) {
     return false;
@@ -2049,6 +2070,11 @@ function calculateKpiResults(definition, startDate, endDate) {
   const clientMap = new Map();
 
   state.data.forEach((row) => {
+    // Regla de negocio: excluir clientes específicos del cálculo OTP.
+    if (isOtpDefinition(definition) && shouldExcludeFromOtp(row)) {
+      return;
+    }
+
     const citaDate = row[definition.citaDateKey];
     if (!isWithinKpiRange(citaDate, startDate, endDate)) {
       return;
