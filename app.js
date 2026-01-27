@@ -468,7 +468,7 @@ function buildLayout() {
               <h3>Cruces</h3>
               <p>Registros próximos a cruce según cita de entrega.</p>
             </div>
-            <div class="control-tower-crossings" role="list"></div>
+            <div class="control-tower-crossings"></div>
             <p class="control-tower-crossings-empty" hidden>No hay cruces próximos.</p>
           </section>
         </div>
@@ -2726,46 +2726,44 @@ function renderControlTowerCrossings(rows) {
   }
 
   dom.controlTowerCrossingsEmpty.hidden = true;
-  dom.controlTowerCrossings.innerHTML = rows
-    .map((row) => {
-      const client = row.cliente || 'Cliente sin nombre';
-      const trip = row.trip || 'Sin trip';
-      const status = row.estado || 'Sin estado';
-      const segment = row.segmento ? row.segmento.toString().trim().toUpperCase() : 'Sin segmento';
-      const citaEntrega = row['cita entrega'] || 'Sin cita';
+  dom.controlTowerCrossings.innerHTML = `
+    <div class="table-wrapper control-tower-crossings-table">
+      <div class="table-scroll">
+        <table class="tracking-table">
+          <thead>
+            <tr>
+              <th scope="col">Cliente</th>
+              <th scope="col">Caja</th>
+              <th scope="col">Destino</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Cita entrega</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows
+              .map((row) => {
+                const client = row.cliente || '-';
+                const caja = row.caja || '-';
+                const destino = row.destino || '-';
+                const status = row.estado || 'Sin estado';
+                const citaEntrega = row['cita entrega'] || '-';
 
-      return `
-        <article class="control-tower-active-card" role="listitem">
-          <header class="control-tower-active-header">
-            <div>
-              <p class="control-tower-active-label">Cliente</p>
-              <p class="control-tower-active-value">${client}</p>
-            </div>
-            <div class="control-tower-active-status">
-              ${renderStatusChip(status)}
-            </div>
-          </header>
-          <div class="control-tower-active-body">
-            <div class="control-tower-active-meta">
-              <div>
-                <p class="control-tower-active-label">Trip</p>
-                <p class="control-tower-active-value">${trip}</p>
-              </div>
-              <div>
-                <p class="control-tower-active-label">Segmento</p>
-                <p class="control-tower-active-value">${segment}</p>
-              </div>
-              <div>
-                <p class="control-tower-active-label">Cita entrega</p>
-                <p class="control-tower-active-value">${citaEntrega}</p>
-              </div>
-            </div>
-            <div class="control-tower-active-actions" aria-hidden="true"></div>
-          </div>
-        </article>
-      `;
-    })
-    .join('');
+                return `
+                  <tr>
+                    <td>${client}</td>
+                    <td>${caja}</td>
+                    <td>${destino}</td>
+                    <td>${renderStatusChip(status)}</td>
+                    <td>${citaEntrega}</td>
+                  </tr>
+                `;
+              })
+              .join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
 }
 
 function formatControlTowerScanLine(alert) {
