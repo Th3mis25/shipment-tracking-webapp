@@ -1151,14 +1151,20 @@ textarea:focus-visible,
 }
 
 .control-tower-crossings-table .tracking-table {
-  min-width: 100%;
   table-layout: auto;
-  width: max-content;
+  width: 100%;
 }
 
 .control-tower-crossings-table .tracking-table th:nth-child(2),
 .control-tower-crossings-table .tracking-table td:nth-child(2) {
   width: auto;
+}
+
+.control-tower-crossings-table .tracking-table th,
+.control-tower-crossings-table .tracking-table td {
+  height: auto;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .control-tower-alert-group {
