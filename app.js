@@ -10,6 +10,7 @@ const TODAY_DELIVERIES_VIEW = 'today-deliveries';
 const WEEKLY_PROGRAM_VIEW = 'weekly-program';
 const KPI_VIEW = 'kpis';
 const CONTROL_TOWER_VIEW = 'control-tower';
+const USA_DOMESTIC_VIEW = 'usa-domestic';
 const DEFAULT_VIEW = DAILY_VIEW;
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
 const THEME_STORAGE_KEY = 'theme';
@@ -75,6 +76,16 @@ const DAILY_TABLE_COLUMNS = [
   { key: 'cita carga', label: 'Cita carga' },
   { key: 'actions', label: 'Acciones' }
 ];
+// Vista USA Domestic: viajes activos de Kone/Prebeo con tabla simplificada.
+const USA_DOMESTIC_TABLE_COLUMNS = [
+  { key: 'cliente', label: 'Cliente' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'trip', label: 'Trip' },
+  { key: 'caja', label: 'Caja' },
+  { key: 'tr-usa', label: 'TR-USA' },
+  { key: 'cita entrega', label: 'Cita entrega' }
+];
+const USA_DOMESTIC_CLIENTS = new Set(['kone', 'prebeo']);
 const ADD_RECORD_FIELDS = [
   { key: 'referencia', label: 'Referencia' },
   { key: 'cliente', label: 'Cliente' },
@@ -226,6 +237,9 @@ function buildLayout() {
                   </button>
                   <button type="button" class="side-menu-button" data-view="${WEEKLY_PROGRAM_VIEW}">
                     Programa semanal
+                  </button>
+                  <button type="button" class="side-menu-button" data-view="${USA_DOMESTIC_VIEW}">
+                    USA Domestic
                   </button>
                   <button type="button" class="side-menu-button" data-view="${KPI_VIEW}">
                     KPIs
@@ -1153,6 +1167,8 @@ function getTableColumns() {
     ? DAILY_TABLE_COLUMNS
     : state.view === ALL_VIEW
       ? ALL_TABLE_COLUMNS
+      : state.view === USA_DOMESTIC_VIEW
+        ? USA_DOMESTIC_TABLE_COLUMNS
       : DEFAULT_TABLE_COLUMNS;
 }
 
@@ -1223,17 +1239,43 @@ function renderCards(data) {
     return;
   }
 
+  const isUsaView = state.view === USA_DOMESTIC_VIEW;
   dom.cardList.innerHTML = data
     .map((row, index) => {
       const trMx = row['tr-mx'];
       const trUsa = row['tr-usa'];
       const citaCarga = row['cita carga'];
+      const citaEntrega = row['cita entrega'];
+      const cardTitle = isUsaView
+        ? row.trip
+          ? `Trip ${row.trip}`
+          : 'Trip no asignado'
+        : row.cliente || 'Cliente sin nombre';
+      const cardSubtitle = isUsaView
+        ? row.cliente || 'Cliente sin nombre'
+        : row.trip
+          ? `Trip ${row.trip}`
+          : 'Trip no asignado';
+      const detailMarkup = isUsaView
+        ? `
+            <div class="card-meta card-meta-client"><strong>Cliente:</strong> ${row.cliente || '-'}</div>
+            <div class="card-meta card-meta-box"><strong>Caja:</strong> ${row.caja || '-'}</div>
+            ${trUsa ? `<div class="card-meta card-meta-tr"><strong>TR-USA:</strong> ${trUsa}</div>` : ''}
+            ${citaEntrega ? `<div class="card-meta card-meta-cita"><strong>Cita entrega:</strong> ${citaEntrega}</div>` : ''}
+          `
+        : `
+            <div class="card-meta card-meta-box"><strong>Caja:</strong> ${row.caja || '-'}</div>
+            <div class="card-meta card-meta-trip"><strong>Trip:</strong> ${row.trip || '-'}</div>
+            ${trMx ? `<div class="card-meta card-meta-tr"><strong>TR-MX:</strong> ${trMx}</div>` : ''}
+            ${trUsa ? `<div class="card-meta card-meta-tr"><strong>TR-USA:</strong> ${trUsa}</div>` : ''}
+            ${citaCarga ? `<div class="card-meta card-meta-cita"><strong>Cita carga:</strong> ${citaCarga}</div>` : ''}
+          `;
       return `
         <article class="card" role="listitem">
           <header class="card-header">
             <div class="card-title-group">
-              <p class="card-title">${row.cliente || 'Cliente sin nombre'}</p>
-              <p>${row.trip ? `Trip ${row.trip}` : 'Trip no asignado'}</p>
+              <p class="card-title">${cardTitle}</p>
+              <p>${cardSubtitle}</p>
             </div>
             <div class="card-header-actions">
               ${renderStatusChip(row.estado)}
@@ -1243,11 +1285,7 @@ function renderCards(data) {
             </div>
           </header>
           <div class="card-details">
-            <div class="card-meta card-meta-box"><strong>Caja:</strong> ${row.caja || '-'}</div>
-            <div class="card-meta card-meta-trip"><strong>Trip:</strong> ${row.trip || '-'}</div>
-            ${trMx ? `<div class="card-meta card-meta-tr"><strong>TR-MX:</strong> ${trMx}</div>` : ''}
-            ${trUsa ? `<div class="card-meta card-meta-tr"><strong>TR-USA:</strong> ${trUsa}</div>` : ''}
-            ${citaCarga ? `<div class="card-meta card-meta-cita"><strong>Cita carga:</strong> ${citaCarga}</div>` : ''}
+            ${detailMarkup}
           </div>
         </article>
       `;
@@ -2066,6 +2104,23 @@ function normalizeClientName(value) {
   return value.toString().trim().toLowerCase();
 }
 
+function isUsaDomesticClient(row) {
+  const clientName = normalizeClientName(row.cliente);
+  if (!clientName) {
+    return false;
+  }
+  return USA_DOMESTIC_CLIENTS.has(clientName);
+}
+
+function getActiveShipments(rows) {
+  return rows.filter((row) => isActiveShipmentForControlTower(row));
+}
+
+// Filtro centralizado para la vista USA Domestic (clientes + viajes activos).
+function getUsaDomesticRows() {
+  return getActiveShipments(state.data).filter((row) => isUsaDomesticClient(row));
+}
+
 function isOtpDefinition(definition) {
   return definition === KPI_DEFINITIONS.otp;
 }
@@ -2334,7 +2389,7 @@ function getControlTowerAlertRows(alerts) {
 }
 
 function getControlTowerActiveRows() {
-  return state.data.filter((row) => isActiveShipmentForControlTower(row));
+  return getActiveShipments(state.data);
 }
 
 function isActiveShipmentForControlTower(row) {
@@ -2805,6 +2860,8 @@ function applyFilters() {
   } else if (state.view === WEEKLY_PROGRAM_VIEW) {
     const weekRange = getMexicoWeekRange(today);
     baseData = state.data.filter((row) => shouldIncludeInWeeklyProgram(row, weekRange));
+  } else if (state.view === USA_DOMESTIC_VIEW) {
+    baseData = getUsaDomesticRows();
   }
 
   let searchableData = baseData;
