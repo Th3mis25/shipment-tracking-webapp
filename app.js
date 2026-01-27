@@ -1219,6 +1219,13 @@ function normalizeStatusKey(statusValue) {
   if (normalized.includes('delivered')) {
     return 'delivered';
   }
+  // Estados específicos con estilo diferenciado por requerimiento operativo.
+  if (normalized === 'nuevo laredo yard') {
+    return 'nuevo-laredo-yard';
+  }
+  if (normalized === 'at destination') {
+    return 'at-destination';
+  }
   if (normalized.includes('drop')) {
     return 'drop';
   }

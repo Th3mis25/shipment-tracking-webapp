@@ -628,6 +628,19 @@ textarea:focus-visible,
   color: var(--success);
 }
 
+/* Estados con semántica logística específica. */
+.status-chip.is-nuevo-laredo-yard {
+  background: #F5A524;
+  border-color: #F5A524;
+  color: #1F2933;
+}
+
+.status-chip.is-at-destination {
+  background: #22C55E;
+  border-color: #22C55E;
+  color: #0F172A;
+}
+
 .status-chip.is-drop {
   background: var(--status-warning-bg);
   border-color: var(--status-warning-border);
