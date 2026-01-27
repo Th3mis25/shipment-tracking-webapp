@@ -697,6 +697,16 @@ function bindEvents() {
 
   if (dom.controlTowerAlerts) {
     dom.controlTowerAlerts.addEventListener('click', (event) => {
+      const groupToggle = event.target.closest('.control-tower-alert-group-header');
+      if (groupToggle) {
+        const group = groupToggle.closest('.control-tower-alert-group');
+        if (!group) {
+          return;
+        }
+        const isExpanded = !group.classList.contains('is-expanded');
+        setControlTowerAlertGroupState(group, isExpanded);
+        return;
+      }
       const alertCard = event.target.closest('[data-alert-index]');
       if (!alertCard) {
         return;
@@ -2242,6 +2252,22 @@ function renderControlTower() {
   renderControlTowerAlerts(metrics.alerts);
 }
 
+function setControlTowerAlertGroupState(group, isExpanded) {
+  if (!group) {
+    return;
+  }
+  group.classList.toggle('is-expanded', isExpanded);
+  group.classList.toggle('is-collapsed', !isExpanded);
+  const header = group.querySelector('.control-tower-alert-group-header');
+  if (header) {
+    header.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+  }
+  const list = group.querySelector('.control-tower-alert-group-list');
+  if (list) {
+    list.setAttribute('aria-hidden', isExpanded ? 'false' : 'true');
+  }
+}
+
 function toggleComplianceHighlight(element, complianceRate, total, threshold = 90) {
   if (!element) {
     return;
@@ -2449,6 +2475,7 @@ function renderControlTowerAlerts(alerts) {
   }
 
   const indexedAlerts = alerts.map((alert, index) => ({ alert, index }));
+  const collapsedAlertTypes = new Set(['missing']);
   const orderedTypes = Object.entries(CONTROL_TOWER_ALERT_TYPES)
     .sort((a, b) => a[1].priority - b[1].priority)
     .map(([typeKey, typeInfo]) => ({ typeKey, label: typeInfo.label }));
@@ -2459,13 +2486,28 @@ function renderControlTowerAlerts(alerts) {
       if (!groupAlerts.length) {
         return '';
       }
+      const isCollapsed = collapsedAlertTypes.has(typeInfo.typeKey);
+      const listId = `control-tower-alert-group-${typeInfo.typeKey}`;
       return `
-        <div class="control-tower-alert-group">
-          <div class="control-tower-alert-group-header">
-            <p class="control-tower-alert-group-title">${typeInfo.label}</p>
-            <span class="control-tower-alert-group-count">${groupAlerts.length}</span>
-          </div>
-          <div class="control-tower-alert-group-list" role="list">
+        <div class="control-tower-alert-group ${isCollapsed ? 'is-collapsed' : 'is-expanded'}">
+          <button
+            class="control-tower-alert-group-header"
+            type="button"
+            aria-expanded="${isCollapsed ? 'false' : 'true'}"
+            aria-controls="${listId}"
+          >
+            <span class="control-tower-alert-group-title">${typeInfo.label}</span>
+            <span class="control-tower-alert-group-meta">
+              <span class="control-tower-alert-group-count">${groupAlerts.length}</span>
+              <span class="control-tower-alert-group-chevron" aria-hidden="true">▾</span>
+            </span>
+          </button>
+          <div
+            class="control-tower-alert-group-list"
+            role="list"
+            id="${listId}"
+            aria-hidden="${isCollapsed ? 'true' : 'false'}"
+          >
             ${groupAlerts
               .map(({ alert, index }) => {
                 return `
