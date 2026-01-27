@@ -23,8 +23,7 @@ const CONTROL_TOWER_RANGE_DAYS = 15;
 const CONTROL_TOWER_CROSSING_STATUS_EXCLUSIONS = new Set([
   'in transit usa',
   'at destination',
-  'delivered',
-  'cancelled'
+  'delivered'
 ]);
 const ALLOWED_OVERDUE_STATUSES = new Set([
   'drop',
@@ -2482,18 +2481,28 @@ function shouldIncludeInControlTowerCrossings(row, today) {
   }
 
   const segment = row.segmento ? row.segmento.toString().trim().toUpperCase() : '';
-  const requiredOffset = segment === 'REG' ? 1 : segment === 'OTR' ? 2 : null;
-  if (!requiredOffset) {
+  // Regla REG = 24h para cita entrega.
+  // Regla OTR = 48h para cita entrega.
+  const requiredHours = segment === 'REG' ? 24 : segment === 'OTR' ? 48 : null;
+  if (!requiredHours) {
     return false;
   }
 
   const statusValue = getRowStatusValue(row);
+  // Reglas de exclusión por estatus: Cancelled nunca aparece.
+  if (statusValue && statusValue.includes('cancelled')) {
+    return false;
+  }
+  // Reglas de exclusión por estatus: solo se oculta en estos estados.
   if (statusValue && CONTROL_TOWER_CROSSING_STATUS_EXCLUSIONS.has(statusValue)) {
     return false;
   }
 
-  const dayDelta = getMexicoDayDelta(today, row.citaEntregaDate);
-  return dayDelta === requiredOffset;
+  const hoursUntilCita = getHoursUntilDate(today, row.citaEntregaDate);
+  if (hoursUntilCita === null) {
+    return false;
+  }
+  return hoursUntilCita >= 0 && hoursUntilCita <= requiredHours;
 }
 
 function isActiveShipmentForControlTower(row) {
@@ -2890,6 +2899,27 @@ function getMexicoDayDelta(startDate, endDate) {
   const startUtc = Date.UTC(startParts.year, startParts.month - 1, startParts.day);
   const endUtc = Date.UTC(endParts.year, endParts.month - 1, endParts.day);
   return Math.round((endUtc - startUtc) / (1000 * 60 * 60 * 24));
+}
+
+function normalizeDateToMinute(date) {
+  if (!date) {
+    return null;
+  }
+  const normalized = new Date(date);
+  if (Number.isNaN(normalized.getTime())) {
+    return null;
+  }
+  normalized.setSeconds(0, 0);
+  return normalized;
+}
+
+function getHoursUntilDate(startDate, endDate) {
+  const normalizedStart = normalizeDateToMinute(startDate);
+  const normalizedEnd = normalizeDateToMinute(endDate);
+  if (!normalizedStart || !normalizedEnd) {
+    return null;
+  }
+  return (normalizedEnd - normalizedStart) / (1000 * 60 * 60);
 }
 
 function compareMexicoDates(dateA, dateB) {
