@@ -62,8 +62,8 @@ const KPI_DEFINITIONS = {
 // Clientes excluidos del cálculo OTP (no se consideran en numerador ni denominador).
 const OTP_EXCLUDED_CLIENTS = new Set(['kone', 'prebeo']);
 const CONTROL_TOWER_ALERT_TYPES = {
-  delay: { label: 'Retraso confirmado', priority: 1, tone: 'danger' },
-  risk: { label: 'Riesgo', priority: 2, tone: 'warning' },
+  risk: { label: 'Riesgo', priority: 1, tone: 'warning' },
+  delay: { label: 'Retraso confirmado', priority: 2, tone: 'danger' },
   missing: { label: 'Falta de evento', priority: 3, tone: 'info' }
 };
 const DAILY_TABLE_COLUMNS = [
@@ -434,7 +434,7 @@ function buildLayout() {
           <section class="control-tower-section">
             <div class="control-tower-section-header">
               <h3>Alertas críticas</h3>
-              <p>Prioridad: retraso confirmado, riesgo y falta de evento.</p>
+              <p>Prioridad: riesgo, retraso confirmado y falta de evento.</p>
             </div>
             <div class="control-tower-alerts" role="list"></div>
             <p class="control-tower-empty" hidden>No hay alertas críticas en este momento.</p>
