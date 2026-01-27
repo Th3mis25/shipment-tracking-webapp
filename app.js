@@ -2920,9 +2920,10 @@ function applyFilters() {
   }
 
   state.filtered = [...filteredData];
+  const sortDateKey = state.view === USA_DOMESTIC_VIEW ? 'citaEntregaDate' : 'citaCargaDate';
   state.filtered.sort((a, b) => {
-    const dateA = a.citaCargaDate;
-    const dateB = b.citaCargaDate;
+    const dateA = a[sortDateKey];
+    const dateB = b[sortDateKey];
     if (!dateA && !dateB) {
       return 0;
     }
