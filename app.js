@@ -772,6 +772,20 @@ function bindEvents() {
     });
   }
 
+  if (dom.controlTowerCrossings) {
+    dom.controlTowerCrossings.addEventListener('click', (event) => {
+      const target = event.target.closest('.trip-link');
+      if (!target) {
+        return;
+      }
+      const rowIndex = Number(target.dataset.crossingIndex);
+      const row = state.controlTowerCrossings[rowIndex];
+      if (row) {
+        openTripModal(row);
+      }
+    });
+  }
+
   if (dom.controlTowerContent) {
     const summaryCards = dom.controlTowerContent.querySelectorAll('[data-control-action]');
     summaryCards.forEach((card) => {
@@ -1202,6 +1216,18 @@ function renderTripCell(tripValue, index) {
 
   return `
     <button type="button" class="trip-link" data-row-index="${index}" aria-label="Ver detalle del trip">
+      ${tripValue}
+    </button>
+  `;
+}
+
+function renderControlTowerTripCell(tripValue, index) {
+  if (!tripValue) {
+    return '-';
+  }
+
+  return `
+    <button type="button" class="trip-link" data-crossing-index="${index}" aria-label="Ver detalle del trip">
       ${tripValue}
     </button>
   `;
@@ -2742,28 +2768,34 @@ function renderControlTowerCrossings(rows) {
           <thead>
             <tr>
               <th scope="col">Cliente</th>
+              <th scope="col">Trip</th>
               <th scope="col">Caja</th>
               <th scope="col">Destino</th>
               <th scope="col">Estado</th>
               <th scope="col">Cita entrega</th>
+              <th scope="col">Docs</th>
             </tr>
           </thead>
           <tbody>
             ${rows
-              .map((row) => {
+              .map((row, index) => {
                 const client = row.cliente || '-';
+                const trip = row.trip;
                 const caja = row.caja || '-';
                 const destino = row.destino || '-';
                 const status = row.estado || 'Sin estado';
                 const citaEntrega = row['cita entrega'] || '-';
+                const docs = row.docs || '-';
 
                 return `
                   <tr>
                     <td>${client}</td>
+                    <td>${renderControlTowerTripCell(trip, index)}</td>
                     <td>${caja}</td>
                     <td>${destino}</td>
                     <td>${renderStatusChip(status)}</td>
                     <td>${citaEntrega}</td>
+                    <td>${docs}</td>
                   </tr>
                 `;
               })
