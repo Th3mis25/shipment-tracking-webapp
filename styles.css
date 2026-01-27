@@ -1151,7 +1151,14 @@ textarea:focus-visible,
 }
 
 .control-tower-crossings-table .tracking-table {
-  min-width: 640px;
+  min-width: 100%;
+  table-layout: auto;
+  width: max-content;
+}
+
+.control-tower-crossings-table .tracking-table th:nth-child(2),
+.control-tower-crossings-table .tracking-table td:nth-child(2) {
+  width: auto;
 }
 
 .control-tower-alert-group {
