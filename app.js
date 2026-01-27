@@ -19,6 +19,7 @@ const THEME_LIGHT = 'light';
 const BASE_STATUS_FILTERS = ['all', 'delivered', 'drop', 'cancelled'];
 const CONTROL_TOWER_MISSING_EVENT_HOURS = 12;
 const CONTROL_TOWER_RISK_WINDOW_HOURS = 4;
+const CONTROL_TOWER_RANGE_DAYS = 15;
 const ALLOWED_OVERDUE_STATUSES = new Set([
   'drop',
   'live',
@@ -420,7 +421,7 @@ function buildLayout() {
                 tabindex="0"
                 aria-label="Ver detalle de OTD global"
               >
-                <p class="control-tower-card-title">% OTD global (rango actual)</p>
+                <p class="control-tower-card-title" data-control-title="otd-global">% OTD global</p>
                 <p class="control-tower-card-value" data-control-value="otd-global">0%</p>
               </article>
               <article
@@ -430,7 +431,7 @@ function buildLayout() {
                 tabindex="0"
                 aria-label="Ver detalle de OTP global"
               >
-                <p class="control-tower-card-title">% OTP global (rango actual)</p>
+                <p class="control-tower-card-title" data-control-title="otp-global">% OTP global</p>
                 <p class="control-tower-card-value" data-control-value="otp-global">0%</p>
               </article>
               <article
@@ -536,6 +537,10 @@ function buildLayout() {
     otdGlobal: dom.app.querySelector('[data-control-value="otd-global"]'),
     otpGlobal: dom.app.querySelector('[data-control-value="otp-global"]'),
     alertShipments: dom.app.querySelector('[data-control-value="alert-shipments"]')
+  };
+  dom.controlTowerTitles = {
+    otdGlobal: dom.app.querySelector('[data-control-title="otd-global"]'),
+    otpGlobal: dom.app.querySelector('[data-control-title="otp-global"]')
   };
   dom.emptyState = dom.app.querySelector('.empty-state');
   dom.menuButtons = dom.app.querySelectorAll('.side-menu-button');
@@ -1365,7 +1370,7 @@ function openControlTowerDetailModal({ title, subtitle, emptyMessage, rows }) {
 
 function openControlTowerKpiModal(kpiKey) {
   const definition = getKpiDefinition(kpiKey);
-  const rollingRange = getMexicoRollingRange(15);
+  const rollingRange = getMexicoRollingRange(CONTROL_TOWER_RANGE_DAYS);
   const rows = getControlTowerKpiRows(definition, rollingRange.startDate, rollingRange.endDate);
   const label = definition.label;
   openControlTowerDetailModal({
@@ -2288,11 +2293,20 @@ function renderControlTower() {
   }
 
   const complianceThreshold = 90;
+  const rangeLabel = getControlTowerRangeLabel();
   const metrics = calculateControlTowerMetrics();
   state.controlTowerAlerts = metrics.alerts;
   state.controlTowerActiveRows = metrics.activeRows;
   if (dom.controlTowerValues.activeShipments) {
     dom.controlTowerValues.activeShipments.textContent = metrics.activeCount.toString();
+  }
+  if (dom.controlTowerTitles) {
+    if (dom.controlTowerTitles.otdGlobal) {
+      dom.controlTowerTitles.otdGlobal.textContent = `% OTD global (${rangeLabel})`;
+    }
+    if (dom.controlTowerTitles.otpGlobal) {
+      dom.controlTowerTitles.otpGlobal.textContent = `% OTP global (${rangeLabel})`;
+    }
   }
   if (dom.controlTowerValues.otdGlobal) {
     dom.controlTowerValues.otdGlobal.textContent = metrics.otd.total === 0
@@ -2321,6 +2335,19 @@ function renderControlTower() {
   }
 
   renderControlTowerAlerts(metrics.alerts);
+}
+
+function getControlTowerRangeLabel() {
+  const rollingRange = getMexicoRollingRange(CONTROL_TOWER_RANGE_DAYS);
+  const totalDays = getInclusiveRangeDays(rollingRange.startDate, rollingRange.endDate);
+  const dayLabel = totalDays === 1 ? 'día' : 'días';
+  return `últimos ${totalDays} ${dayLabel}`;
+}
+
+function getInclusiveRangeDays(startDate, endDate) {
+  const diffMs = endDate.getTime() - startDate.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  return Math.max(1, diffDays + 1);
 }
 
 function setControlTowerAlertGroupState(group, isExpanded) {
@@ -2361,7 +2388,7 @@ function toggleComplianceHighlight(element, complianceRate, total, threshold = 9
 
 function calculateControlTowerMetrics() {
   const activeRows = getControlTowerActiveRows();
-  const rollingRange = getMexicoRollingRange(15);
+  const rollingRange = getMexicoRollingRange(CONTROL_TOWER_RANGE_DAYS);
   // Estructura lista para agregar tendencias y gráficas sin recalcular datos base.
   const otdResults = calculateKpiResults(
     KPI_DEFINITIONS.otd,
