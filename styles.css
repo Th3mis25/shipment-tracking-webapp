@@ -1023,18 +1023,21 @@ textarea:focus-visible,
 .control-tower-header {
   align-items: center;
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: 6px;
+  text-align: center;
 }
 
 .control-tower-title {
-  font-size: 20px;
-  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  margin: 0 0 4px;
 }
 
 .control-tower-subtitle {
   color: var(--text-muted);
-  margin-top: 4px;
+  font-size: 14px;
+  margin: 0;
 }
 
 .control-tower-section {
@@ -1052,9 +1055,10 @@ textarea:focus-visible,
 }
 
 .control-tower-summary {
-  display: grid;
+  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .control-tower-card {
@@ -1064,6 +1068,9 @@ textarea:focus-visible,
   display: grid;
   gap: 6px;
   padding: 16px;
+  width: fit-content;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .control-tower-card--secondary .control-tower-card-value {
@@ -1531,6 +1538,14 @@ textarea:focus-visible,
 
   .card-list {
     display: grid;
+  }
+
+  .control-tower-summary {
+    flex-direction: column;
+  }
+
+  .control-tower-card {
+    width: 100%;
   }
 
   .card {
