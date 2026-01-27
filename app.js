@@ -434,7 +434,7 @@ function buildLayout() {
           <section class="control-tower-section">
             <div class="control-tower-section-header">
               <h3>Alertas críticas</h3>
-              <p>Prioridad: falta de evento y retraso confirmado.</p>
+              <p>Prioridad: retraso confirmado, riesgo y falta de evento.</p>
             </div>
             <div class="control-tower-alerts" role="list"></div>
             <p class="control-tower-empty" hidden>No hay alertas críticas en este momento.</p>
