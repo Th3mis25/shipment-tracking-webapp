@@ -1771,6 +1771,7 @@ function setView(view) {
   }
 
   state.view = view;
+  resetFiltersForViewChange();
   updateMenuActiveState();
   setMenuOpen(false);
   updateViewLayout();
@@ -1929,6 +1930,36 @@ function setStatusFilter(statusKey) {
   }
   state.statusFilter = statusKey;
   applyFilters();
+}
+
+function resetFiltersForViewChange() {
+  state.query = '';
+  state.statusFilter = 'all';
+  state.clientFilter = 'all';
+  state.dateStartFilter = null;
+  state.dateEndFilter = null;
+
+  if (dom.searchInput) {
+    dom.searchInput.value = '';
+  }
+  if (dom.dateStartInput) {
+    dom.dateStartInput.value = '';
+  }
+  if (dom.dateEndInput) {
+    dom.dateEndInput.value = '';
+  }
+  if (dom.clientSelect) {
+    dom.clientSelect.value = 'all';
+  }
+  if (dom.filterControls) {
+    dom.filterControls.querySelectorAll('.filter-block.is-open').forEach((block) => {
+      block.classList.remove('is-open');
+      const toggle = block.querySelector('.filter-toggle');
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
 }
 
 function matchesStatusFilter(row, statusKey) {
