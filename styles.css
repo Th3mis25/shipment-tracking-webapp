@@ -1150,6 +1150,10 @@ textarea:focus-visible,
   text-align: center;
 }
 
+.control-tower-crossings-table .tracking-table {
+  min-width: 640px;
+}
+
 .control-tower-alert-group {
   display: grid;
   gap: 12px;
