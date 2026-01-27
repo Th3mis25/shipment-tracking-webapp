@@ -17,6 +17,7 @@ const THEME_DARK = 'dark';
 const THEME_LIGHT = 'light';
 const BASE_STATUS_FILTERS = ['all', 'delivered', 'drop', 'cancelled'];
 const CONTROL_TOWER_MISSING_EVENT_HOURS = 12;
+const CONTROL_TOWER_RISK_WINDOW_HOURS = 4;
 const ALLOWED_OVERDUE_STATUSES = new Set([
   'drop',
   'live',
@@ -61,8 +62,9 @@ const KPI_DEFINITIONS = {
 // Clientes excluidos del cálculo OTP (no se consideran en numerador ni denominador).
 const OTP_EXCLUDED_CLIENTS = new Set(['kone', 'prebeo']);
 const CONTROL_TOWER_ALERT_TYPES = {
-  missing: { label: 'Falta de evento', priority: 1, tone: 'info' },
-  delay: { label: 'Retraso confirmado', priority: 2, tone: 'danger' }
+  delay: { label: 'Retraso confirmado', priority: 1, tone: 'danger' },
+  risk: { label: 'Riesgo', priority: 2, tone: 'warning' },
+  missing: { label: 'Falta de evento', priority: 3, tone: 'info' }
 };
 const DAILY_TABLE_COLUMNS = [
   { key: 'cliente', label: 'Cliente' },
@@ -2352,6 +2354,40 @@ function buildControlTowerAlerts(rows) {
   });
 }
 
+function formatControlTowerRelativeTime(citaDate, now) {
+  const minutesDiff = Math.round((citaDate - now) / (1000 * 60));
+  const minutesAbs = Math.abs(minutesDiff);
+  const hours = Math.floor(minutesAbs / 60);
+  const minutes = minutesAbs % 60;
+  const timeLabel = `${hours}h ${minutes}m`;
+  if (minutesDiff >= 0) {
+    return `Faltan ${timeLabel} para la cita`;
+  }
+  return `Cita vencida hace ${timeLabel}`;
+}
+
+function evaluateControlTowerRisk({ citaDate, llegadaDate, now, citaKey }) {
+  if (!citaDate || llegadaDate) {
+    return null;
+  }
+
+  const hoursAfterCita = (now - citaDate) / (1000 * 60 * 60);
+  if (hoursAfterCita >= CONTROL_TOWER_MISSING_EVENT_HOURS) {
+    return null;
+  }
+
+  const minutesUntilCita = Math.round((citaDate - now) / (1000 * 60));
+  if (minutesUntilCita > CONTROL_TOWER_RISK_WINDOW_HOURS * 60) {
+    return null;
+  }
+
+  const citaType = citaKey === 'cita entrega' ? 'entrega' : 'carga';
+  const relativeTime = formatControlTowerRelativeTime(citaDate, now);
+  return {
+    statusHint: `Riesgo de incumplir cita de ${citaType}. ${relativeTime}`
+  };
+}
+
 function createControlTowerAlert(row, { citaKey, llegadaKey, citaLabel, now }) {
   const citaValue = row[citaKey];
   const citaDate = parseDateTimeValue(citaValue);
@@ -2361,6 +2397,12 @@ function createControlTowerAlert(row, { citaKey, llegadaKey, citaLabel, now }) {
 
   const llegadaDate = parseDateTimeValue(row[llegadaKey]);
   const hoursAfterCita = (now - citaDate) / (1000 * 60 * 60);
+  const riskAssessment = evaluateControlTowerRisk({
+    citaDate,
+    llegadaDate,
+    now,
+    citaKey
+  });
 
   let typeKey = null;
   let statusHint = '';
@@ -2377,6 +2419,9 @@ function createControlTowerAlert(row, { citaKey, llegadaKey, citaLabel, now }) {
   } else if (hoursAfterCita >= CONTROL_TOWER_MISSING_EVENT_HOURS) {
     typeKey = 'missing';
     statusHint = 'Llegada no registrada después del tiempo esperado.';
+  } else if (riskAssessment) {
+    typeKey = 'risk';
+    statusHint = riskAssessment.statusHint;
   } else {
     return null;
   }
