@@ -1097,16 +1097,35 @@ textarea:focus-visible,
 }
 
 .control-tower-alert-group-header {
-  display: flex;
   align-items: center;
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
   justify-content: space-between;
   gap: 12px;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.control-tower-alert-group-header:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .control-tower-alert-group-title {
   font-size: 14px;
   font-weight: 600;
   margin: 0;
+}
+
+.control-tower-alert-group-meta {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
 }
 
 .control-tower-alert-group-count {
@@ -1118,9 +1137,36 @@ textarea:focus-visible,
   padding: 2px 10px;
 }
 
+.control-tower-alert-group-chevron {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
 .control-tower-alert-group-list {
   display: grid;
   gap: 12px;
+  max-height: 2000px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
+  transform: translateY(0);
+}
+
+.control-tower-alert-group.is-collapsed {
+  gap: 0;
+}
+
+.control-tower-alert-group.is-collapsed .control-tower-alert-group-list {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+}
+
+.control-tower-alert-group.is-collapsed .control-tower-alert-group-chevron {
+  transform: rotate(-90deg);
 }
 
 
