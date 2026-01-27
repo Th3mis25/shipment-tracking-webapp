@@ -12,7 +12,7 @@ const KPI_VIEW = 'kpis';
 const CONTROL_TOWER_VIEW = 'control-tower';
 const DEFAULT_VIEW = DAILY_VIEW;
 const DEFAULT_EMPTY_MESSAGE = 'No hay resultados para mostrar.';
-const THEME_STORAGE_KEY = 'tracking-theme';
+const THEME_STORAGE_KEY = 'theme';
 const THEME_DARK = 'dark';
 const THEME_LIGHT = 'light';
 const BASE_STATUS_FILTERS = ['all', 'delivered', 'drop', 'cancelled'];
@@ -186,9 +186,10 @@ const TRIP_EDIT_FIELDS = [
   { key: 'comentarios', label: 'Comentarios', type: 'textarea' }
 ];
 
+initTheme();
+
 // Punto de entrada de la app.
 document.addEventListener('DOMContentLoaded', () => {
-  initTheme();
   buildLayout();
   bindEvents();
   fetchData();
@@ -554,11 +555,7 @@ function bindEvents() {
 
   if (dom.themeToggle) {
     dom.themeToggle.addEventListener('click', () => {
-      const nextTheme = document.body.classList.contains('theme-dark')
-        ? THEME_LIGHT
-        : THEME_DARK;
-      applyTheme(nextTheme);
-      localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+      toggleTheme();
     });
   }
 
@@ -826,9 +823,7 @@ function bindEvents() {
 }
 
 function initTheme() {
-  const storedTheme = getStoredTheme();
-  const initialTheme = storedTheme || getSystemTheme();
-  applyTheme(initialTheme);
+  applyTheme(getPreferredTheme());
 }
 
 function getStoredTheme() {
@@ -840,13 +835,27 @@ function getStoredTheme() {
 }
 
 function getSystemTheme() {
+  if (!window.matchMedia) {
+    return null;
+  }
   return window.matchMedia('(prefers-color-scheme: dark)').matches
     ? THEME_DARK
     : THEME_LIGHT;
 }
 
+function getPreferredTheme() {
+  return getStoredTheme() || getSystemTheme() || THEME_DARK;
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || THEME_DARK;
+  const nextTheme = currentTheme === THEME_DARK ? THEME_LIGHT : THEME_DARK;
+  applyTheme(nextTheme);
+  localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+}
+
 function applyTheme(theme) {
-  document.body.classList.toggle('theme-dark', theme === THEME_DARK);
+  document.documentElement.setAttribute('data-theme', theme);
   if (!dom.themeToggle) {
     return;
   }
