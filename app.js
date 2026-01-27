@@ -20,6 +20,12 @@ const BASE_STATUS_FILTERS = ['all', 'delivered', 'drop', 'cancelled'];
 const CONTROL_TOWER_MISSING_EVENT_HOURS = 12;
 const CONTROL_TOWER_RISK_WINDOW_HOURS = 4;
 const CONTROL_TOWER_RANGE_DAYS = 15;
+const CONTROL_TOWER_CROSSING_STATUS_EXCLUSIONS = new Set([
+  'in transit usa',
+  'at destination',
+  'delivered',
+  'cancelled'
+]);
 const ALLOWED_OVERDUE_STATUSES = new Set([
   'drop',
   'live',
@@ -126,7 +132,8 @@ const state = {
   activeTripRow: null,
   isEditingTrip: false,
   controlTowerAlerts: [],
-  controlTowerActiveRows: []
+  controlTowerActiveRows: [],
+  controlTowerCrossings: []
 };
 
 // Referencias a elementos principales del DOM.
@@ -158,6 +165,8 @@ const dom = {
   controlTowerContent: null,
   controlTowerAlerts: null,
   controlTowerEmpty: null,
+  controlTowerCrossings: null,
+  controlTowerCrossingsEmpty: null,
   controlTowerActiveCard: null,
   controlTowerActiveModal: null,
   controlTowerActiveList: null,
@@ -454,6 +463,14 @@ function buildLayout() {
             <div class="control-tower-alerts" role="list"></div>
             <p class="control-tower-empty" hidden>No hay alertas críticas en este momento.</p>
           </section>
+          <section class="control-tower-section">
+            <div class="control-tower-section-header">
+              <h3>Cruces</h3>
+              <p>Registros próximos a cruce según cita de entrega.</p>
+            </div>
+            <div class="control-tower-crossings" role="list"></div>
+            <p class="control-tower-crossings-empty" hidden>No hay cruces próximos.</p>
+          </section>
         </div>
       </section>
     </div>
@@ -526,6 +543,8 @@ function buildLayout() {
   dom.controlTowerContent = dom.app.querySelector('.control-tower-content');
   dom.controlTowerAlerts = dom.app.querySelector('.control-tower-alerts');
   dom.controlTowerEmpty = dom.app.querySelector('.control-tower-empty');
+  dom.controlTowerCrossings = dom.app.querySelector('.control-tower-crossings');
+  dom.controlTowerCrossingsEmpty = dom.app.querySelector('.control-tower-crossings-empty');
   dom.controlTowerActiveCard = dom.app.querySelector('[data-control-action="active-shipments"]');
   dom.controlTowerActiveModal = dom.app.querySelector('.control-tower-active-modal');
   dom.controlTowerActiveList = dom.app.querySelector('.control-tower-active-list');
@@ -2297,6 +2316,7 @@ function renderControlTower() {
   const metrics = calculateControlTowerMetrics();
   state.controlTowerAlerts = metrics.alerts;
   state.controlTowerActiveRows = metrics.activeRows;
+  state.controlTowerCrossings = metrics.crossings;
   if (dom.controlTowerValues.activeShipments) {
     dom.controlTowerValues.activeShipments.textContent = metrics.activeCount.toString();
   }
@@ -2335,6 +2355,7 @@ function renderControlTower() {
   }
 
   renderControlTowerAlerts(metrics.alerts);
+  renderControlTowerCrossings(metrics.crossings);
 }
 
 function getControlTowerRangeLabel() {
@@ -2388,6 +2409,7 @@ function toggleComplianceHighlight(element, complianceRate, total, threshold = 9
 
 function calculateControlTowerMetrics() {
   const activeRows = getControlTowerActiveRows();
+  const crossings = getControlTowerCrossings();
   const rollingRange = getMexicoRollingRange(CONTROL_TOWER_RANGE_DAYS);
   // Estructura lista para agregar tendencias y gráficas sin recalcular datos base.
   const otdResults = calculateKpiResults(
@@ -2407,7 +2429,8 @@ function calculateControlTowerMetrics() {
     activeCount: activeRows.length,
     otd: otdResults,
     otp: otpResults,
-    alerts
+    alerts,
+    crossings
   };
 }
 
@@ -2433,6 +2456,44 @@ function getControlTowerAlertRows(alerts) {
 
 function getControlTowerActiveRows() {
   return getActiveShipments(state.data);
+}
+
+function getControlTowerCrossings() {
+  const today = new Date();
+  return state.data
+    .filter((row) => shouldIncludeInControlTowerCrossings(row, today))
+    .sort((a, b) => {
+      if (!a.citaEntregaDate && !b.citaEntregaDate) {
+        return 0;
+      }
+      if (!a.citaEntregaDate) {
+        return 1;
+      }
+      if (!b.citaEntregaDate) {
+        return -1;
+      }
+      return a.citaEntregaDate - b.citaEntregaDate;
+    });
+}
+
+function shouldIncludeInControlTowerCrossings(row, today) {
+  if (!row.citaEntregaDate) {
+    return false;
+  }
+
+  const segment = row.segmento ? row.segmento.toString().trim().toUpperCase() : '';
+  const requiredOffset = segment === 'REG' ? 1 : segment === 'OTR' ? 2 : null;
+  if (!requiredOffset) {
+    return false;
+  }
+
+  const statusValue = getRowStatusValue(row);
+  if (statusValue && CONTROL_TOWER_CROSSING_STATUS_EXCLUSIONS.has(statusValue)) {
+    return false;
+  }
+
+  const dayDelta = getMexicoDayDelta(today, row.citaEntregaDate);
+  return dayDelta === requiredOffset;
 }
 
 function isActiveShipmentForControlTower(row) {
@@ -2653,6 +2714,60 @@ function renderControlTowerAlerts(alerts) {
   dom.controlTowerEmpty.hidden = alerts.length > 0;
 }
 
+function renderControlTowerCrossings(rows) {
+  if (!dom.controlTowerCrossings || !dom.controlTowerCrossingsEmpty) {
+    return;
+  }
+
+  if (!rows.length) {
+    dom.controlTowerCrossings.innerHTML = '';
+    dom.controlTowerCrossingsEmpty.hidden = false;
+    return;
+  }
+
+  dom.controlTowerCrossingsEmpty.hidden = true;
+  dom.controlTowerCrossings.innerHTML = rows
+    .map((row) => {
+      const client = row.cliente || 'Cliente sin nombre';
+      const trip = row.trip || 'Sin trip';
+      const status = row.estado || 'Sin estado';
+      const segment = row.segmento ? row.segmento.toString().trim().toUpperCase() : 'Sin segmento';
+      const citaEntrega = row['cita entrega'] || 'Sin cita';
+
+      return `
+        <article class="control-tower-active-card" role="listitem">
+          <header class="control-tower-active-header">
+            <div>
+              <p class="control-tower-active-label">Cliente</p>
+              <p class="control-tower-active-value">${client}</p>
+            </div>
+            <div class="control-tower-active-status">
+              ${renderStatusChip(status)}
+            </div>
+          </header>
+          <div class="control-tower-active-body">
+            <div class="control-tower-active-meta">
+              <div>
+                <p class="control-tower-active-label">Trip</p>
+                <p class="control-tower-active-value">${trip}</p>
+              </div>
+              <div>
+                <p class="control-tower-active-label">Segmento</p>
+                <p class="control-tower-active-value">${segment}</p>
+              </div>
+              <div>
+                <p class="control-tower-active-label">Cita entrega</p>
+                <p class="control-tower-active-value">${citaEntrega}</p>
+              </div>
+            </div>
+            <div class="control-tower-active-actions" aria-hidden="true"></div>
+          </div>
+        </article>
+      `;
+    })
+    .join('');
+}
+
 function formatControlTowerScanLine(alert) {
   const client = alert.client || 'Sin cliente';
   const trip = alert.trip || 'Sin trip';
@@ -2769,6 +2884,14 @@ function getMexicoDateParts(date) {
     month: Number(parts.month),
     day: Number(parts.day)
   };
+}
+
+function getMexicoDayDelta(startDate, endDate) {
+  const startParts = getMexicoDateParts(startDate);
+  const endParts = getMexicoDateParts(endDate);
+  const startUtc = Date.UTC(startParts.year, startParts.month - 1, startParts.day);
+  const endUtc = Date.UTC(endParts.year, endParts.month - 1, endParts.day);
+  return Math.round((endUtc - startUtc) / (1000 * 60 * 60 * 24));
 }
 
 function compareMexicoDates(dateA, dateB) {

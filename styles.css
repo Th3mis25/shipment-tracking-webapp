@@ -1139,6 +1139,17 @@ textarea:focus-visible,
   text-align: center;
 }
 
+.control-tower-crossings {
+  display: grid;
+  gap: 12px;
+}
+
+.control-tower-crossings-empty {
+  color: var(--text-muted);
+  margin: 0;
+  text-align: center;
+}
+
 .control-tower-alert-group {
   display: grid;
   gap: 12px;
