@@ -1223,11 +1223,20 @@ function normalizeStatusKey(statusValue) {
   if (normalized === 'nuevo laredo yard') {
     return 'nuevo-laredo-yard';
   }
+  if (normalized.includes('loading')) {
+    return 'loading';
+  }
   if (normalized === 'at destination') {
     return 'at-destination';
   }
   if (normalized.includes('drop')) {
     return 'drop';
+  }
+  if (normalized.includes('retraso confirmado')) {
+    return 'retraso-confirmado';
+  }
+  if (normalized.includes('riesgo')) {
+    return 'riesgo';
   }
   if (normalized.includes('cancel')) {
     return 'cancelled';
