@@ -82,6 +82,15 @@ const DAILY_TABLE_COLUMNS = [
   { key: 'cita carga', label: 'Cita carga' },
   { key: 'actions', label: 'Acciones' }
 ];
+const TODAY_DELIVERIES_TABLE_COLUMNS = [
+  { key: 'cliente', label: 'Cliente' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'trip', label: 'Trip' },
+  { key: 'caja', label: 'Caja' },
+  { key: 'tr-mx', label: 'TR-MX' },
+  { key: 'tr-usa', label: 'TR-USA' },
+  { key: 'cita entrega', label: 'Cita entrega' }
+];
 // Vista USA Domestic: viajes activos de Kone/Prebeo con tabla simplificada.
 const USA_DOMESTIC_TABLE_COLUMNS = [
   { key: 'cliente', label: 'Cliente' },
@@ -1204,6 +1213,8 @@ function getTableColumns() {
     ? DAILY_TABLE_COLUMNS
     : state.view === ALL_VIEW
       ? ALL_TABLE_COLUMNS
+      : state.view === TODAY_DELIVERIES_VIEW
+        ? TODAY_DELIVERIES_TABLE_COLUMNS
       : state.view === USA_DOMESTIC_VIEW
         ? USA_DOMESTIC_TABLE_COLUMNS
       : DEFAULT_TABLE_COLUMNS;
@@ -3139,7 +3150,10 @@ function applyFilters() {
   }
 
   state.filtered = [...filteredData];
-  const sortDateKey = state.view === USA_DOMESTIC_VIEW ? 'citaEntregaDate' : 'citaCargaDate';
+  const sortDateKey =
+    state.view === USA_DOMESTIC_VIEW || state.view === TODAY_DELIVERIES_VIEW
+      ? 'citaEntregaDate'
+      : 'citaCargaDate';
   state.filtered.sort((a, b) => {
     const dateA = a[sortDateKey];
     const dateB = b[sortDateKey];
